@@ -12,7 +12,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Ta configuration Firebase spécifique
+        // Configuration Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCJrobm_byf7r409nRnikVHc1VDlmJ7FY0",
             authDomain: "tete-d-or.firebaseapp.com",
@@ -23,7 +23,7 @@
             measurementId: "G-D6D3WDYQ04"
         };
 
-        // On expose ces modules à la fenêtre globale pour que le script du jeu puisse les utiliser
+        // Exposition globale
         window.firebaseModules = { 
             initializeApp, 
             getAuth, 
@@ -74,6 +74,7 @@
 
     <canvas id="gameCanvas"></canvas>
 
+    <!-- Start Screen -->
     <div id="startScreen" class="ui-layer interactive">
         <div class="max-w-md w-[95%]">
             <h1 class="text-5xl text-white text-center mb-6 arcade-font drop-shadow-[0_4px_0_rgba(0,0,0,0.3)] stroke-black" style="-webkit-text-stroke: 1px rgba(0,0,0,0.2);">TÊTE D'OR</h1>
@@ -124,6 +125,7 @@
         </div>
     </div>
 
+    <!-- HUD -->
     <div id="hudLayer" class="ui-layer hidden !justify-start !items-start p-4">
         <div class="flex justify-between w-full items-start">
             <div class="text-5xl text-white font-black drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] arcade-font stroke-black" style="-webkit-text-stroke: 2px black;"><span id="scoreDisplay">0</span></div>
@@ -134,6 +136,7 @@
         </div>
     </div>
 
+    <!-- Game Over -->
     <div id="gameOverScreen" class="ui-layer interactive hidden">
         <div class="glass-panel p-8 max-w-sm w-[90%] text-center">
             <h2 class="text-5xl text-red-500 mb-2 arcade-font drop-shadow-sm">FIN DU MATCH</h2>
@@ -147,78 +150,54 @@
         </div>
     </div>
 
+    <!-- Scores Modal -->
     <div id="scoresModal" class="modal hidden interactive">
         <div class="glass-panel modal-content p-0 max-w-lg w-[90%] text-center overflow-hidden relative">
-            
-            <button 
-                onclick="document.getElementById('scoresModal').classList.add('hidden')" 
-                class="absolute top-2 right-4 text-3xl font-bold text-white/80 hover:text-white z-50 transition-colors">
-                &times;
-            </button>
-
+            <button onclick="document.getElementById('scoresModal').classList.add('hidden')" class="absolute top-2 right-4 text-3xl font-bold text-white/80 hover:text-white z-50 transition-colors">&times;</button>
             <div class="bg-blue-600 text-white p-4">
                 <h2 class="text-2xl arcade-font">CLASSEMENT</h2>
             </div>
-            
             <div class="flex border-b bg-gray-50">
                 <div id="tabLocal" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('local')">LOCAL</div>
                 <div id="tabWorld" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('world')">MONDE 🌍</div>
             </div>
-
             <div id="scoresTable" class="text-left min-h-[250px] p-0 bg-white"></div>
-            
             <div class="p-4 border-t">
-                <button 
-                    onclick="document.getElementById('scoresModal').classList.add('hidden')" 
-                    id="closeScoresModal" 
-                    class="w-full bg-red-100 hover:bg-red-200 text-red-600 text-lg py-2 rounded-xl font-bold transition">
-                    Fermer
-                </button>
+                <button onclick="document.getElementById('scoresModal').classList.add('hidden')" id="closeScoresModal" class="w-full bg-red-100 hover:bg-red-200 text-red-600 text-lg py-2 rounded-xl font-bold transition">Fermer</button>
             </div>
         </div>
     </div>
 
     <script>
         /** --- FIREBASE ENGINE --- **/
-let db, auth;
-let isFirebaseReady = false;
+        let db, auth;
+        let isFirebaseReady = false;
 
-async function initFirebase() {
-    let attempts = 0;
-    // On attend que le script type="module" ait rempli window.firebaseModules
-    while (!window.firebaseModules && attempts < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-    }
-
-    try {
-        if (window.firebaseModules) {
-            const { initializeApp, getAuth, signInAnonymously, getFirestore, firebaseConfig } = window.firebaseModules;
-            
-            // Initialisation
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            
-            // Connexion anonyme
-            await signInAnonymously(auth);
-            
-            // Mise à jour des variables globales pour le reste du jeu
-            window.db = db;
-            window.auth = auth;
-            isFirebaseReady = true;
-            
-            console.log("✅ Firebase connecté avec succès !");
-        } else {
-            console.error("❌ Échec : Les modules Firebase n'ont pas chargé.");
+        async function initFirebase() {
+            let attempts = 0;
+            while (!window.firebaseModules && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            try {
+                if (window.firebaseModules) {
+                    const { initializeApp, getAuth, signInAnonymously, getFirestore, firebaseConfig } = window.firebaseModules;
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    await signInAnonymously(auth);
+                    window.db = db;
+                    window.auth = auth;
+                    isFirebaseReady = true;
+                    console.log("✅ Firebase connecté avec succès !");
+                } else {
+                    console.error("❌ Échec : Les modules Firebase n'ont pas chargé.");
+                }
+            } catch (e) {
+                console.error("❌ Erreur Firebase lors de l'init:", e);
+            }
         }
-    } catch (e) {
-        console.error("❌ Erreur Firebase lors de l'init:", e);
-    }
-}
-
-// Lancement de l'initialisation
-initFirebase();
+        initFirebase();
 
         /** --- AUDIO ENGINE --- **/
         const AudioEngine = {
@@ -254,7 +233,7 @@ initFirebase();
             }
         };
 
-        /** --- GAME CONFIG --- **/
+        /** --- GAME CONFIG & PHYSICS --- **/
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const startScreen = document.getElementById('startScreen');
@@ -270,8 +249,23 @@ initFirebase();
         const toggleMusicBtn = document.getElementById('toggleMusicBtn');
         const muteBtnGame = document.getElementById('muteBtnGame');
 
-        let gameRunning = false, score = 0, animationId, lastTime = 0, difficultyLevel = 1, userFaceImage = null, playerHitTimer = 0;
-        const GRAVITY = 0.55, AIR_RESISTANCE = 0.99, BOUNCE_FORCE = -15, PLAYER_RECOIL_FORCE = 15, PLAYER_SMOOTHING_FACTOR = 0.5;
+        let gameRunning = false, score = 0, lastTime = 0, difficultyLevel = 1, userFaceImage = null, playerHitTimer = 0;
+        
+        // Cible pour le mouvement fluide (interpolation)
+        let targetPlayerX = 0;
+
+        // Constantes physiques ajustées pour dt (Delta Time)
+        // Les valeurs sont basées sur une cible de 60 FPS
+        const TARGET_FPS = 60;
+        const GRAVITY = 0.55; 
+        const AIR_RESISTANCE = 0.99; 
+        const BOUNCE_FORCE = -15; 
+        const PLAYER_RECOIL_FORCE = 15; 
+        
+        // Facteur de lissage ajusté (0.5 à 60fps ~= 0.5 par frame)
+        // Formule : new = current + (target - current) * factor
+        const PLAYER_SMOOTHING_FACTOR = 0.5;
+
         let player = { x: 0, y: 0, width: 80, height: 140, headRadius: 35, vx: 0, jerseyColor: '#3b82f6', shortsColor: '#ffffff', skinColor: '#fca5a5' };
         let ball = { x: 0, y: 0, radius: 20, vx: 0, vy: 0, rotation: 0 };
         let obstacles = [], particles = [];
@@ -296,14 +290,24 @@ initFirebase();
             createOptions(shortsColors, 'shortsColors', 'shortsColor');
         }
         function updateSelection(container, selectedEl) { Array.from(container.children).forEach(c => c.classList.remove('selected')); selectedEl.classList.add('selected'); }
+        
         window.switchMainTab = function(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.main-tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('content' + (tabName.charAt(0).toUpperCase() + tabName.slice(1))).classList.add('active');
             document.getElementById('tab' + (tabName.charAt(0).toUpperCase() + tabName.slice(1))).classList.add('active');
         };
+
         function setPlayerY() { player.y = canvas.height - 40; }
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; setPlayerY(); if (!gameRunning) player.x = canvas.width / 2; }
+        function resize() { 
+            canvas.width = window.innerWidth; 
+            canvas.height = window.innerHeight; 
+            setPlayerY(); 
+            if (!gameRunning) {
+                player.x = canvas.width / 2; 
+                targetPlayerX = player.x; // Important pour ne pas sauter
+            }
+        }
         window.addEventListener('resize', resize);
         
         function updateMusicButtonUI() {
@@ -317,7 +321,10 @@ initFirebase();
         function initGame() {
             score = 0; difficultyLevel = 1; scoreDisplay.textContent = "0";
             levelDisplay.textContent = "NIVEAU 1"; levelDisplay.className = "text-xl text-yellow-300 font-bold drop-shadow-lg bg-black/40 px-4 py-1 rounded-full";
-            player.x = canvas.width / 2; setPlayerY(); resetBall(); obstacles = []; particles = []; gameRunning = true; lastTime = performance.now();
+            player.x = canvas.width / 2; 
+            targetPlayerX = player.x;
+            setPlayerY(); resetBall(); obstacles = []; particles = []; gameRunning = true; 
+            lastTime = performance.now();
         }
 
         function resetBall() {
@@ -326,49 +333,109 @@ initFirebase();
             const speedX = 6 + Math.random() * 4; ball.vx = side === 'left' ? speedX : -speedX; ball.vy = -8 - Math.random() * 5; ball.rotation = 0;
         }
 
+        /** --- DELTA TIME GAME LOOP --- **/
         function masterLoop(timestamp) {
-    setTimeout(() => {
-        if (gameRunning) update();
-        draw();
-        requestAnimationFrame(masterLoop);
-    }, 1000 / 60); // Force le jeu à ne pas dépasser 60 images par seconde
-}
+            if (!lastTime) lastTime = timestamp;
+            
+            // Calcul du Delta Time (dt)
+            // dt = 1.0 veut dire qu'on tourne exactement à 60 FPS
+            // dt = 2.0 veut dire qu'on tourne à 30 FPS (donc on bouge 2x plus vite pour compenser)
+            const deltaTime = (timestamp - lastTime) / (1000 / TARGET_FPS);
+            lastTime = timestamp;
 
-        function update() {
-            ball.vy += GRAVITY; ball.vx *= AIR_RESISTANCE; ball.x += ball.vx; ball.y += ball.vy; ball.rotation += ball.vx * 0.05;
+            // Cap pour éviter des sauts énormes si on change d'onglet (max équivalent à 15 FPS)
+            const cappedDelta = Math.min(deltaTime, 4.0);
+
+            if (gameRunning) update(cappedDelta);
+            draw();
+            requestAnimationFrame(masterLoop);
+        }
+
+        function update(dt) {
+            // Physique de la balle
+            ball.vy += GRAVITY * dt; 
+            // Friction exponentielle approximée pour dt
+            ball.vx *= Math.pow(AIR_RESISTANCE, dt); 
+            
+            ball.x += ball.vx * dt; 
+            ball.y += ball.vy * dt; 
+            ball.rotation += ball.vx * 0.05 * dt;
+
+            // Murs
             if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.vx *= -0.8; } 
             else if (ball.x + ball.radius > canvas.width) { ball.x = canvas.width - ball.radius; ball.vx *= -0.8; }
             if (ball.y - ball.radius > canvas.height - 40) { endGame(); }
 
+            // Collision Tête
             const headCenterY = player.y - 155; 
             const dx = ball.x - player.x; const dy = ball.y - headCenterY;
             const distance = Math.sqrt(dx*dx + dy*dy); const minDist = ball.radius + player.headRadius * 0.8; 
 
             if (distance < minDist && ball.vy > 0) { 
                 const impactRatio = dx / (player.headRadius * 1.5); 
-                ball.vy = BOUNCE_FORCE; ball.vx = impactRatio * 15; ball.y = headCenterY - minDist - 2; 
+                ball.vy = BOUNCE_FORCE; // Vitesse instantanée, pas besoin de dt ici
+                ball.vx = impactRatio * 15; 
+                ball.y = headCenterY - minDist - 2; 
                 score++; scoreDisplay.textContent = score;
                 createParticles(ball.x, ball.y + ball.radius, 15, '#ffffff', 5); createParticles(ball.x, ball.y + ball.radius, 7, '#fbbf24', 3);
                 checkDifficulty();
             }
-            if(playerHitTimer > 0) playerHitTimer--;
-            if (Math.random() < 0.008 * difficultyLevel) spawnObstacle();
+
+            // Gestion des timers avec dt
+            if(playerHitTimer > 0) playerHitTimer -= dt;
+
+            // Obstacles
+            if (Math.random() < (0.008 * difficultyLevel) * dt) spawnObstacle();
 
             obstacles.forEach((obs, index) => {
-                obs.x += obs.vx; obs.y += obs.vy; obs.rotation += obs.rotSpeed;
+                obs.x += obs.vx * dt; 
+                obs.y += obs.vy * dt; 
+                obs.rotation += obs.rotSpeed * dt;
+
                 if (obs.x < -100 || obs.x > canvas.width + 100 || obs.y > canvas.height + 100) { obstacles.splice(index, 1); return; }
+                
+                // Collisions Obstacles
                 const dxB = ball.x - obs.x; const dyB = ball.y - obs.y;
                 if (Math.sqrt(dxB * dxB + dyB * dyB) < ball.radius + 20) { 
                     createParticles(ball.x, ball.y, 8, '#9ca3af', 3); ball.vx = (Math.random() - 0.5) * 25; ball.vy = (Math.random() - 0.5) * 20; obstacles.splice(index, 1); return;
                 }
                 const playerBodyTop = player.y - 140; const playerBodyBottom = player.y - 5;
                 if (obs.x > player.x - 30 && obs.x < player.x + 30 && obs.y > playerBodyTop && obs.y < playerBodyBottom) {
-                    if (playerHitTimer === 0) { createParticles(obs.x, obs.y, 15, '#ef4444', 4); player.vx = obs.vx > 0 ? -PLAYER_RECOIL_FORCE : PLAYER_RECOIL_FORCE; playerHitTimer = 30; setTimeout(() => player.vx = 0, 100); }
+                    if (playerHitTimer <= 0) { 
+                        createParticles(obs.x, obs.y, 15, '#ef4444', 4); 
+                        player.vx = obs.vx > 0 ? -PLAYER_RECOIL_FORCE : PLAYER_RECOIL_FORCE; 
+                        playerHitTimer = 30; // ~0.5 secondes
+                        // Le recul s'arrête vite, on simule un petit timer pour annuler la vélocité latérale du joueur due au choc
+                        setTimeout(() => player.vx = 0, 100); 
+                    }
                     obstacles.splice(index, 1); return;
                 }
             });
-            player.x += player.vx; if (player.x < 40) player.x = 40; if (player.x > canvas.width - 40) player.x = canvas.width - 40;
-            particles.forEach((p, index) => { p.x += p.vx; p.y += p.vy; p.life--; p.alpha = p.life / 30; p.radius *= 0.95; if (p.life <= 0) particles.splice(index, 1); });
+
+            // Mouvement du joueur
+            // 1. Recul en cas de choc
+            player.x += player.vx * dt; 
+            
+            // 2. Mouvement suivi de la souris/doigt (Lissage indépendant du framerate)
+            // Formule de Lerp corrigée pour le temps variable : lerp(a, b, 1 - pow(persistence, dt))
+            // Persistence = 1 - SMOOTHING (Si smooth=0.5, persistence=0.5)
+            const persistence = 1 - PLAYER_SMOOTHING_FACTOR;
+            const frameFactor = 1 - Math.pow(persistence, dt);
+            player.x += (targetPlayerX - player.x) * frameFactor;
+
+            // Bornes
+            if (player.x < 40) player.x = 40; 
+            if (player.x > canvas.width - 40) player.x = canvas.width - 40;
+
+            // Particules
+            particles.forEach((p, index) => { 
+                p.x += p.vx * dt; 
+                p.y += p.vy * dt; 
+                p.life -= dt; 
+                p.alpha = Math.max(0, p.life / 30); 
+                p.radius *= Math.pow(0.95, dt); // Réduction taille frame-independent
+                if (p.life <= 0) particles.splice(index, 1); 
+            });
         }
 
         function checkDifficulty() {
@@ -449,9 +516,23 @@ initFirebase();
             ctx.restore();
         }
         function createParticles(x, y, count, color, minRadius = 2) { for (let i = 0; i < count; i++) { particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 1.5) * 8, radius: Math.random() * 3 + minRadius, color: color, life: 30 + Math.random() * 20, alpha: 1 }); } }
-        function handleInput(clientX) { let newX = clientX; if (newX < 40) newX = 40; if (newX > canvas.width - 40) newX = canvas.width - 40; player.x += (newX - player.x) * PLAYER_SMOOTHING_FACTOR; }
-        canvas.addEventListener('mousemove', (e) => handleInput(e.clientX)); canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e.touches[0].clientX); }, { passive: false });
-        window.addEventListener('keydown', (e) => { if(e.key === "ArrowLeft" || e.key === "q") player.x = Math.max(40, player.x - 20); if(e.key === "ArrowRight" || e.key === "d") player.x = Math.min(canvas.width - 40, player.x + 20); });
+        
+        /** --- INPUT HANDLING FIX --- **/
+        // Nous mettons maintenant à jour la CIBLE, et non la position directe.
+        // La position réelle est mise à jour dans update() pour être fluide quel que soit le taux de rafraichissement.
+        function handleInput(clientX) { 
+            let newX = clientX; 
+            if (newX < 40) newX = 40; 
+            if (newX > canvas.width - 40) newX = canvas.width - 40; 
+            targetPlayerX = newX;
+        }
+        canvas.addEventListener('mousemove', (e) => handleInput(e.clientX)); 
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e.touches[0].clientX); }, { passive: false });
+        // Pour les flèches, on déplace aussi la cible
+        window.addEventListener('keydown', (e) => { 
+            if(e.key === "ArrowLeft" || e.key === "q") targetPlayerX = Math.max(40, targetPlayerX - 40); 
+            if(e.key === "ArrowRight" || e.key === "d") targetPlayerX = Math.min(canvas.width - 40, targetPlayerX + 40); 
+        });
 
         /** --- SCORES LOCAL & WORLD --- **/
         const SCORE_KEY = 'tete_dor_highscores';
@@ -460,13 +541,10 @@ initFirebase();
         function loadLocalScores() { try { return JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch { return []; } }
         
         async function saveScore(name, score) {
-            // 1. Local
             let scores = loadLocalScores(); scores.push({ name: name || "Anonyme", score: score }); scores.sort((a, b) => b.score - a.score); scores = scores.slice(0, 10); localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
-            // 2. World (Firebase)
             if (isFirebaseReady) {
                 try {
                     const { collection, addDoc } = window.firebaseModules;
-                    // On écrit dans une collection simple "scores"
                     await addDoc(collection(db, 'scores'), { name: name || "Anonyme", score: score, timestamp: Date.now() });
                 } catch (e) { console.error("Erreur sauvegarde cloud:", e); }
             }
@@ -480,36 +558,32 @@ initFirebase();
         };
 
         async function renderScores() {
-    const container = document.getElementById('scoresTable');
-    container.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
-    
-    if (currentTab === 'local') {
-        const scores = loadLocalScores();
-        displayScoresList(scores, container);
-    } else {
-        // Attendre jusqu'à 3 secondes si Firebase n'est pas encore initialisé
-        let attempts = 0;
-        while (!isFirebaseReady && attempts < 30) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-        }
-
-        if (isFirebaseReady) {
-            try {
-                const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
-                const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(10));
-                const querySnapshot = await getDocs(q);
-                const scores = querySnapshot.docs.map(doc => doc.data());
+            const container = document.getElementById('scoresTable');
+            container.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+            
+            if (currentTab === 'local') {
+                const scores = loadLocalScores();
                 displayScoresList(scores, container);
-            } catch (e) {
-                console.error("Erreur Firestore:", e);
-                container.innerHTML = `<p class="text-center p-4 text-red-500 text-sm">Erreur: ${e.message}</p>`;
+            } else {
+                let attempts = 0;
+                while (!isFirebaseReady && attempts < 30) { await new Promise(resolve => setTimeout(resolve, 100)); attempts++; }
+
+                if (isFirebaseReady) {
+                    try {
+                        const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
+                        const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(10));
+                        const querySnapshot = await getDocs(q);
+                        const scores = querySnapshot.docs.map(doc => doc.data());
+                        displayScoresList(scores, container);
+                    } catch (e) {
+                        console.error("Erreur Firestore:", e);
+                        container.innerHTML = `<p class="text-center p-4 text-red-500 text-sm">Erreur: ${e.message}</p>`;
+                    }
+                } else {
+                    container.innerHTML = '<p class="text-center p-4 text-gray-500 italic">Connexion au serveur impossible...<br><span class="text-xs">Vérifie l\'activation du mode Anonyme dans Firebase</span></p>';
+                }
             }
-        } else {
-            container.innerHTML = '<p class="text-center p-4 text-gray-500 italic">Connexion au serveur impossible...<br><span class="text-xs">Vérifie l\'activation du mode Anonyme dans Firebase</span></p>';
         }
-    }
-}
 
         function displayScoresList(scores, container) {
             let html = '<table class="w-full border-collapse"><thead><tr class="text-gray-500 text-sm border-b"><th class="p-3 text-center">#</th><th class="p-3 text-left">JOUEUR</th><th class="p-3 text-right">SCORE</th></tr></thead><tbody>';
@@ -532,14 +606,14 @@ initFirebase();
 
         document.getElementById('startBtn').addEventListener('click', () => { startScreen.classList.add('hidden'); hudLayer.classList.remove('hidden'); initGame(); });
         document.getElementById('restartBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); hudLayer.classList.remove('hidden'); initGame(); });
-        document.getElementById('changeFaceBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); player.x = canvas.width / 2; });
+        document.getElementById('changeFaceBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); player.x = canvas.width / 2; targetPlayerX = player.x; });
         document.getElementById('showScoresBtn').addEventListener('click', displayHighScores);
         document.getElementById('closeScoresModal').addEventListener('click', () => { document.getElementById('scoresModal').classList.add('hidden'); });
         photoInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { userFaceImage = img; facePreview.src = ev.target.result; facePreview.classList.remove('hidden'); placeholderFace.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
         });
 
-        initCustomizationUI(); resize(); updateMusicButtonUI(); requestAnimationFrame(masterLoop); player.x = canvas.width / 2;
+        initCustomizationUI(); resize(); updateMusicButtonUI(); requestAnimationFrame(masterLoop); player.x = canvas.width / 2; targetPlayerX = player.x;
     </script>
 </body>
 </html>
