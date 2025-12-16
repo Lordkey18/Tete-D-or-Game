@@ -444,31 +444,35 @@
         };
 
         async function renderScores() {
-            const container = document.getElementById('scoresTable');
-            container.innerHTML = '<div class="flex justify-center items-center h-full p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
-            let scores = [];
-
-            if (currentTab === 'local') {
-                scores = loadLocalScores();
-                displayScoresList(scores, container);
-            } else {
-                if (isFirebaseReady) {
-                    try {
-                        const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
-                        // On récupère les 10 meilleurs scores, triés par "score" décroissant
-                        const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(10));
-                        const querySnapshot = await getDocs(q);
-                        scores = querySnapshot.docs.map(doc => doc.data());
-                        displayScoresList(scores, container);
-                    } catch (e) {
-                        console.error("Erreur lecture:", e);
-                        container.innerHTML = '<p class="text-center p-4 text-red-500">Erreur de connexion.<br>Vérifie tes Règles Firebase.</p>';
-                    }
-                } else {
-                    container.innerHTML = '<p class="text-center p-4 text-gray-500">Mode hors ligne.</p>';
-                }
-            }
+    const container = document.getElementById('scoresTable');
+    container.innerHTML = '<div class="flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+    
+    if (currentTab === 'local') {
+        const scores = loadLocalScores();
+        displayScoresList(scores, container);
+    } else {
+        // On attend un tout petit peu si Firebase n'est pas encore totalement prêt
+        if (!isFirebaseReady) {
+            // Tentative de reconnexion manuelle si besoin
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
+
+        if (isFirebaseReady) {
+            try {
+                const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
+                const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(10));
+                const querySnapshot = await getDocs(q);
+                const scores = querySnapshot.docs.map(doc => doc.data());
+                displayScoresList(scores, container);
+            } catch (e) {
+                console.error("Erreur Firestore:", e);
+                container.innerHTML = `<p class="text-center p-4 text-red-500 text-sm">Erreur: ${e.message}</p>`;
+            }
+        } else {
+            container.innerHTML = '<p class="text-center p-4 text-gray-500">Connexion au serveur impossible...</p>';
+        }
+    }
+}
 
         function displayScoresList(scores, container) {
             let html = '<table class="w-full border-collapse"><thead><tr class="text-gray-500 text-sm border-b"><th class="p-3 text-center">#</th><th class="p-3 text-left">JOUEUR</th><th class="p-3 text-right">SCORE</th></tr></thead><tbody>';
