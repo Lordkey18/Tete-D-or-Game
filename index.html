@@ -451,10 +451,11 @@
         const scores = loadLocalScores();
         displayScoresList(scores, container);
     } else {
-        // On attend un tout petit peu si Firebase n'est pas encore totalement prêt
-        if (!isFirebaseReady) {
-            // Tentative de reconnexion manuelle si besoin
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        // Attendre jusqu'à 3 secondes si Firebase n'est pas encore initialisé
+        let attempts = 0;
+        while (!isFirebaseReady && attempts < 30) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
         }
 
         if (isFirebaseReady) {
@@ -469,7 +470,7 @@
                 container.innerHTML = `<p class="text-center p-4 text-red-500 text-sm">Erreur: ${e.message}</p>`;
             }
         } else {
-            container.innerHTML = '<p class="text-center p-4 text-gray-500">Connexion au serveur impossible...</p>';
+            container.innerHTML = '<p class="text-center p-4 text-gray-500 italic">Connexion au serveur impossible...<br><span class="text-xs">Vérifie l\'activation du mode Anonyme dans Firebase</span></p>';
         }
     }
 }
