@@ -161,30 +161,45 @@
 
     <script>
         /** --- FIREBASE ENGINE --- **/
-        let db, auth;
-        let isFirebaseReady = false;
+let db, auth;
+let isFirebaseReady = false;
 
-        async function initFirebase() {
-            try {
-                if (window.firebaseModules) {
-                    const { initializeApp, getAuth, signInAnonymously, getFirestore, firebaseConfig } = window.firebaseModules;
-                    
-                    // Initialisation avec ta configuration
-                    const app = initializeApp(firebaseConfig);
-                    auth = getAuth(app);
-                    db = getFirestore(app);
-                    
-                    // Connexion anonyme pour pouvoir écrire dans la base
-                    await signInAnonymously(auth);
-                    
-                    isFirebaseReady = true;
-                    console.log("Firebase connecté au projet Tête d'Or !");
-                }
-            } catch (e) {
-                console.error("Erreur Firebase:", e);
-            }
+async function initFirebase() {
+    let attempts = 0;
+    // On attend que le script type="module" ait rempli window.firebaseModules
+    while (!window.firebaseModules && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+
+    try {
+        if (window.firebaseModules) {
+            const { initializeApp, getAuth, signInAnonymously, getFirestore, firebaseConfig } = window.firebaseModules;
+            
+            // Initialisation
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            // Connexion anonyme
+            await signInAnonymously(auth);
+            
+            // Mise à jour des variables globales pour le reste du jeu
+            window.db = db;
+            window.auth = auth;
+            isFirebaseReady = true;
+            
+            console.log("✅ Firebase connecté avec succès !");
+        } else {
+            console.error("❌ Échec : Les modules Firebase n'ont pas chargé.");
         }
-        initFirebase();
+    } catch (e) {
+        console.error("❌ Erreur Firebase lors de l'init:", e);
+    }
+}
+
+// Lancement de l'initialisation
+initFirebase();
 
         /** --- AUDIO ENGINE --- **/
         const AudioEngine = {
