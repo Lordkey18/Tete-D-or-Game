@@ -68,6 +68,12 @@
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .section-title { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; margin-bottom: 0.5rem; text-align: left; }
+        
+        /* Custom Scrollbar for better look */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
     </style>
 </head>
 <body class="bg-field text-slate-800">
@@ -150,19 +156,31 @@
         </div>
     </div>
 
-    <!-- Scores Modal -->
+    <!-- Scores Modal (MODIFIÉ POUR LE SCROLL) -->
     <div id="scoresModal" class="modal hidden interactive">
-        <div class="glass-panel modal-content p-0 max-w-lg w-[90%] text-center overflow-hidden relative">
+        <!-- Utilisation de Flexbox pour une mise en page fixe (Header) + Scroll (Body) -->
+        <div class="glass-panel modal-content p-0 max-w-lg w-[90%] text-center relative flex flex-col max-h-[85vh] !overflow-hidden">
+            
             <button onclick="document.getElementById('scoresModal').classList.add('hidden')" class="absolute top-2 right-4 text-3xl font-bold text-white/80 hover:text-white z-50 transition-colors">&times;</button>
-            <div class="bg-blue-600 text-white p-4">
+            
+            <!-- Header Fixe -->
+            <div class="bg-blue-600 text-white p-4 shrink-0">
                 <h2 class="text-2xl arcade-font">CLASSEMENT</h2>
             </div>
-            <div class="flex border-b bg-gray-50">
+            
+            <!-- Onglets Fixes -->
+            <div class="flex border-b bg-gray-50 shrink-0">
                 <div id="tabLocal" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('local')">LOCAL</div>
                 <div id="tabWorld" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('world')">MONDE 🌍</div>
             </div>
-            <div id="scoresTable" class="text-left min-h-[250px] p-0 bg-white"></div>
-            <div class="p-4 border-t">
+
+            <!-- Liste Scrollable (Flex Grow + Overflow Auto) -->
+            <div id="scoresTable" class="text-left bg-white overflow-y-auto flex-1 custom-scroll p-0 relative">
+                <!-- Les scores seront injectés ici -->
+            </div>
+            
+            <!-- Footer Fixe -->
+            <div class="p-4 border-t shrink-0 bg-white">
                 <button onclick="document.getElementById('scoresModal').classList.add('hidden')" id="closeScoresModal" class="w-full bg-red-100 hover:bg-red-200 text-red-600 text-lg py-2 rounded-xl font-bold transition">Fermer</button>
             </div>
         </div>
@@ -250,20 +268,14 @@
         const muteBtnGame = document.getElementById('muteBtnGame');
 
         let gameRunning = false, score = 0, lastTime = 0, difficultyLevel = 1, userFaceImage = null, playerHitTimer = 0;
-        
-        // Cible pour le mouvement fluide (interpolation)
         let targetPlayerX = 0;
 
-        // Constantes physiques ajustées pour dt (Delta Time)
-        // Les valeurs sont basées sur une cible de 60 FPS
+        // Constantes physiques
         const TARGET_FPS = 60;
         const GRAVITY = 0.55; 
         const AIR_RESISTANCE = 0.99; 
         const BOUNCE_FORCE = -15; 
         const PLAYER_RECOIL_FORCE = 15; 
-        
-        // Facteur de lissage ajusté (0.5 à 60fps ~= 0.5 par frame)
-        // Formule : new = current + (target - current) * factor
         const PLAYER_SMOOTHING_FACTOR = 0.5;
 
         let player = { x: 0, y: 0, width: 80, height: 140, headRadius: 35, vx: 0, jerseyColor: '#3b82f6', shortsColor: '#ffffff', skinColor: '#fca5a5' };
@@ -305,7 +317,7 @@
             setPlayerY(); 
             if (!gameRunning) {
                 player.x = canvas.width / 2; 
-                targetPlayerX = player.x; // Important pour ne pas sauter
+                targetPlayerX = player.x;
             }
         }
         window.addEventListener('resize', resize);
@@ -336,44 +348,32 @@
         /** --- DELTA TIME GAME LOOP --- **/
         function masterLoop(timestamp) {
             if (!lastTime) lastTime = timestamp;
-            
-            // Calcul du Delta Time (dt)
-            // dt = 1.0 veut dire qu'on tourne exactement à 60 FPS
-            // dt = 2.0 veut dire qu'on tourne à 30 FPS (donc on bouge 2x plus vite pour compenser)
             const deltaTime = (timestamp - lastTime) / (1000 / TARGET_FPS);
             lastTime = timestamp;
-
-            // Cap pour éviter des sauts énormes si on change d'onglet (max équivalent à 15 FPS)
             const cappedDelta = Math.min(deltaTime, 4.0);
-
             if (gameRunning) update(cappedDelta);
             draw();
             requestAnimationFrame(masterLoop);
         }
 
         function update(dt) {
-            // Physique de la balle
             ball.vy += GRAVITY * dt; 
-            // Friction exponentielle approximée pour dt
             ball.vx *= Math.pow(AIR_RESISTANCE, dt); 
-            
             ball.x += ball.vx * dt; 
             ball.y += ball.vy * dt; 
             ball.rotation += ball.vx * 0.05 * dt;
 
-            // Murs
             if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.vx *= -0.8; } 
             else if (ball.x + ball.radius > canvas.width) { ball.x = canvas.width - ball.radius; ball.vx *= -0.8; }
             if (ball.y - ball.radius > canvas.height - 40) { endGame(); }
 
-            // Collision Tête
             const headCenterY = player.y - 155; 
             const dx = ball.x - player.x; const dy = ball.y - headCenterY;
             const distance = Math.sqrt(dx*dx + dy*dy); const minDist = ball.radius + player.headRadius * 0.8; 
 
             if (distance < minDist && ball.vy > 0) { 
                 const impactRatio = dx / (player.headRadius * 1.5); 
-                ball.vy = BOUNCE_FORCE; // Vitesse instantanée, pas besoin de dt ici
+                ball.vy = BOUNCE_FORCE; 
                 ball.vx = impactRatio * 15; 
                 ball.y = headCenterY - minDist - 2; 
                 score++; scoreDisplay.textContent = score;
@@ -381,20 +381,12 @@
                 checkDifficulty();
             }
 
-            // Gestion des timers avec dt
             if(playerHitTimer > 0) playerHitTimer -= dt;
-
-            // Obstacles
             if (Math.random() < (0.008 * difficultyLevel) * dt) spawnObstacle();
 
             obstacles.forEach((obs, index) => {
-                obs.x += obs.vx * dt; 
-                obs.y += obs.vy * dt; 
-                obs.rotation += obs.rotSpeed * dt;
-
+                obs.x += obs.vx * dt; obs.y += obs.vy * dt; obs.rotation += obs.rotSpeed * dt;
                 if (obs.x < -100 || obs.x > canvas.width + 100 || obs.y > canvas.height + 100) { obstacles.splice(index, 1); return; }
-                
-                // Collisions Obstacles
                 const dxB = ball.x - obs.x; const dyB = ball.y - obs.y;
                 if (Math.sqrt(dxB * dxB + dyB * dyB) < ball.radius + 20) { 
                     createParticles(ball.x, ball.y, 8, '#9ca3af', 3); ball.vx = (Math.random() - 0.5) * 25; ball.vy = (Math.random() - 0.5) * 20; obstacles.splice(index, 1); return;
@@ -402,38 +394,23 @@
                 const playerBodyTop = player.y - 140; const playerBodyBottom = player.y - 5;
                 if (obs.x > player.x - 30 && obs.x < player.x + 30 && obs.y > playerBodyTop && obs.y < playerBodyBottom) {
                     if (playerHitTimer <= 0) { 
-                        createParticles(obs.x, obs.y, 15, '#ef4444', 4); 
-                        player.vx = obs.vx > 0 ? -PLAYER_RECOIL_FORCE : PLAYER_RECOIL_FORCE; 
-                        playerHitTimer = 30; // ~0.5 secondes
-                        // Le recul s'arrête vite, on simule un petit timer pour annuler la vélocité latérale du joueur due au choc
-                        setTimeout(() => player.vx = 0, 100); 
+                        createParticles(obs.x, obs.y, 15, '#ef4444', 4); player.vx = obs.vx > 0 ? -PLAYER_RECOIL_FORCE : PLAYER_RECOIL_FORCE; 
+                        playerHitTimer = 30; setTimeout(() => player.vx = 0, 100); 
                     }
                     obstacles.splice(index, 1); return;
                 }
             });
 
-            // Mouvement du joueur
-            // 1. Recul en cas de choc
             player.x += player.vx * dt; 
-            
-            // 2. Mouvement suivi de la souris/doigt (Lissage indépendant du framerate)
-            // Formule de Lerp corrigée pour le temps variable : lerp(a, b, 1 - pow(persistence, dt))
-            // Persistence = 1 - SMOOTHING (Si smooth=0.5, persistence=0.5)
             const persistence = 1 - PLAYER_SMOOTHING_FACTOR;
             const frameFactor = 1 - Math.pow(persistence, dt);
             player.x += (targetPlayerX - player.x) * frameFactor;
 
-            // Bornes
             if (player.x < 40) player.x = 40; 
             if (player.x > canvas.width - 40) player.x = canvas.width - 40;
 
-            // Particules
             particles.forEach((p, index) => { 
-                p.x += p.vx * dt; 
-                p.y += p.vy * dt; 
-                p.life -= dt; 
-                p.alpha = Math.max(0, p.life / 30); 
-                p.radius *= Math.pow(0.95, dt); // Réduction taille frame-independent
+                p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.alpha = Math.max(0, p.life / 30); p.radius *= Math.pow(0.95, dt); 
                 if (p.life <= 0) particles.splice(index, 1); 
             });
         }
@@ -517,9 +494,6 @@
         }
         function createParticles(x, y, count, color, minRadius = 2) { for (let i = 0; i < count; i++) { particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 1.5) * 8, radius: Math.random() * 3 + minRadius, color: color, life: 30 + Math.random() * 20, alpha: 1 }); } }
         
-        /** --- INPUT HANDLING FIX --- **/
-        // Nous mettons maintenant à jour la CIBLE, et non la position directe.
-        // La position réelle est mise à jour dans update() pour être fluide quel que soit le taux de rafraichissement.
         function handleInput(clientX) { 
             let newX = clientX; 
             if (newX < 40) newX = 40; 
@@ -528,7 +502,6 @@
         }
         canvas.addEventListener('mousemove', (e) => handleInput(e.clientX)); 
         canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e.touches[0].clientX); }, { passive: false });
-        // Pour les flèches, on déplace aussi la cible
         window.addEventListener('keydown', (e) => { 
             if(e.key === "ArrowLeft" || e.key === "q") targetPlayerX = Math.max(40, targetPlayerX - 40); 
             if(e.key === "ArrowRight" || e.key === "d") targetPlayerX = Math.min(canvas.width - 40, targetPlayerX + 40); 
@@ -541,7 +514,8 @@
         function loadLocalScores() { try { return JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch { return []; } }
         
         async function saveScore(name, score) {
-            let scores = loadLocalScores(); scores.push({ name: name || "Anonyme", score: score }); scores.sort((a, b) => b.score - a.score); scores = scores.slice(0, 10); localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
+            // Augmentation de la limite locale à 50
+            let scores = loadLocalScores(); scores.push({ name: name || "Anonyme", score: score }); scores.sort((a, b) => b.score - a.score); scores = scores.slice(0, 50); localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
             if (isFirebaseReady) {
                 try {
                     const { collection, addDoc } = window.firebaseModules;
@@ -571,7 +545,8 @@
                 if (isFirebaseReady) {
                     try {
                         const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
-                        const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(10));
+                        // Augmentation de la limite Firestore à 50
+                        const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(50));
                         const querySnapshot = await getDocs(q);
                         const scores = querySnapshot.docs.map(doc => doc.data());
                         displayScoresList(scores, container);
@@ -586,7 +561,7 @@
         }
 
         function displayScoresList(scores, container) {
-            let html = '<table class="w-full border-collapse"><thead><tr class="text-gray-500 text-sm border-b"><th class="p-3 text-center">#</th><th class="p-3 text-left">JOUEUR</th><th class="p-3 text-right">SCORE</th></tr></thead><tbody>';
+            let html = '<table class="w-full border-collapse"><thead><tr class="text-gray-500 text-sm border-b sticky top-0 bg-white shadow-sm"><th class="p-3 text-center">#</th><th class="p-3 text-left">JOUEUR</th><th class="p-3 text-right">SCORE</th></tr></thead><tbody>';
             if (scores.length === 0) { html += `<tr><td colspan="3" class="p-8 text-center text-gray-400 italic">Aucun score pour le moment.<br>Sois le premier !</td></tr>`; } 
             else {
                 scores.forEach((s, i) => { 
