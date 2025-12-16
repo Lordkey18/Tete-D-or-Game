@@ -308,10 +308,12 @@ initFirebase();
         }
 
         function masterLoop(timestamp) {
-            const dt = timestamp - lastTime; lastTime = timestamp;
-            if (gameRunning) update(); else player.x += (canvas.width / 2 - player.x) * 0.1;
-            draw(); animationId = requestAnimationFrame(masterLoop);
-        }
+    setTimeout(() => {
+        if (gameRunning) update();
+        draw();
+        requestAnimationFrame(masterLoop);
+    }, 1000 / 60); // Force le jeu à ne pas dépasser 60 images par seconde
+}
 
         function update() {
             ball.vy += GRAVITY; ball.vx *= AIR_RESISTANCE; ball.x += ball.vx; ball.y += ball.vy; ball.rotation += ball.vx * 0.05;
