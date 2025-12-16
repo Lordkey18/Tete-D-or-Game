@@ -6,348 +6,187 @@
     <title>Tête d'Or - Arcade Football</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Firebase Libraries -->
     <script type="module">
+        // Importation des fonctions nécessaires
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Expose Firebase functions to global scope for the game logic
-        window.firebaseModules = { initializeApp, getAuth, signInAnonymously, getFirestore, collection, addDoc, getDocs };
+        // Ta configuration Firebase spécifique
+        const firebaseConfig = {
+            apiKey: "AIzaSyCJrobm_byf7r409nRnikVHc1VDlmJ7FY0",
+            authDomain: "tete-d-or.firebaseapp.com",
+            projectId: "tete-d-or",
+            storageBucket: "tete-d-or.firebasestorage.app",
+            messagingSenderId: "751725321702",
+            appId: "1:751725321702:web:9b1c9d8eda3dae0c758a27",
+            measurementId: "G-D6D3WDYQ04"
+        };
+
+        // On expose ces modules à la fenêtre globale pour que le script du jeu puisse les utiliser
+        window.firebaseModules = { 
+            initializeApp, 
+            getAuth, 
+            signInAnonymously, 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            query, 
+            orderBy, 
+            limit, 
+            firebaseConfig 
+        };
     </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap');
-
-        body {
-            font-family: 'Nunito', sans-serif;
-            overflow: hidden;
-            touch-action: none;
-            background-color: #222;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        h1, h2, .arcade-font {
-            font-family: 'Fredoka One', cursive;
-        }
-
-        .bg-field {
-            background: linear-gradient(to bottom, #7dd3fc 0%, #34d399 20%, #10b981 80%, #059669 100%);
-        }
-
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-
-        .interactive {
-            pointer-events: auto;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-        
-        input[type="file"] {
-            display: none;
-        }
-        
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            border: 4px solid #f9fafb;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
-            border-radius: 1.5rem;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .btn-primary {
-            transition: all 0.15s ease-out;
-            border: 3px solid #14532d;
-            background-image: linear-gradient(to bottom, #4ade80, #22c55e);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
-        .btn-primary:active {
-            box-shadow: none;
-            transform: translateY(3px);
-            border-bottom: 3px solid #14532d;
-        }
-
-        /* --- STYLES DU MASQUE VISAGE (Simple Ovale) --- */
-        .face-preview-wrapper {
-            position: relative;
-            width: 140px;
-            height: 140px;
-            margin: 0 auto;
-        }
-
-        .face-mask-clip {
-            width: 100%;
-            height: 100%;
-            clip-path: ellipse(45% 55% at 50% 50%); /* Ovale simple */
-            background-color: #e5e7eb;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .face-mask-clip img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .face-guide-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 20;
-        }
-        
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-        }
-
-        .modal-content {
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .score-row:nth-child(odd) {
-            background-color: #f3f4f6;
-        }
-
-        .color-option {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid rgba(0,0,0,0.1);
-            transition: transform 0.2s, border-color 0.2s;
-        }
-        .color-option:hover {
-            transform: scale(1.1);
-        }
-        .color-option.selected {
-            border: 3px solid #000;
-            transform: scale(1.2);
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-
-        /* Tabs for Scoreboard */
-        .tab-btn {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 4px solid transparent;
-            font-weight: bold;
-            color: #6b7280;
-            flex: 1;
-        }
-        .tab-btn.active {
-            color: #2563eb;
-            border-bottom: 4px solid #2563eb;
-        }
+        body { font-family: 'Nunito', sans-serif; overflow: hidden; touch-action: none; background-color: #222; user-select: none; -webkit-user-select: none; }
+        h1, h2, .arcade-font { font-family: 'Fredoka One', cursive; }
+        .bg-field { background: radial-gradient(circle at center, #4ade80 0%, #16a34a 60%, #14532d 100%); }
+        #gameCanvas { display: block; width: 100%; height: 100%; box-shadow: 0 0 20px rgba(0, 0, 0, 0.3); }
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        .interactive { pointer-events: auto; }
+        .hidden { display: none !important; }
+        input[type="file"] { display: none; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 4px solid #f9fafb; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border-radius: 1.5rem; max-height: 90vh; overflow-y: auto; transition: all 0.3s ease; }
+        .btn-primary { transition: all 0.1s ease-out; border-bottom: 4px solid #15803d; background-image: linear-gradient(to bottom, #4ade80, #22c55e); text-shadow: 1px 1px 0px rgba(0,0,0,0.1); }
+        .btn-primary:active { transform: translateY(2px); border-bottom: 0px solid #15803d; margin-top: 2px; margin-bottom: 2px; }
+        .face-preview-wrapper { position: relative; width: 100px; height: 100px; margin: 0 auto; }
+        .face-mask-clip { width: 100%; height: 100%; clip-path: ellipse(45% 55% at 50% 50%); background-color: #e5e7eb; overflow: hidden; position: relative; }
+        .face-mask-clip img { width: 100%; height: 100%; object-fit: cover; }
+        .face-guide-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 50; }
+        .modal-content { max-height: 80vh; overflow-y: auto; }
+        .color-option { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 3px solid rgba(255,255,255,0.8); box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s, border-color 0.2s; }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border: 3px solid #000; transform: scale(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,1); }
+        .main-tabs { display: flex; background: #e5e7eb; border-radius: 1rem 1rem 0 0; padding: 4px 4px 0 4px; margin-bottom: 0; }
+        .main-tab-btn { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: 800; color: #6b7280; border-radius: 0.8rem 0.8rem 0 0; transition: all 0.2s; font-family: 'Fredoka One', cursive; font-size: 1.1rem; }
+        .main-tab-btn.active { background: white; color: #16a34a; box-shadow: 0 -4px 6px rgba(0,0,0,0.05); }
+        .tab-content { display: none; padding: 1.5rem; background: white; border-radius: 0 0 1.5rem 1.5rem; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .section-title { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; margin-bottom: 0.5rem; text-align: left; }
     </style>
 </head>
 <body class="bg-field text-slate-800">
 
-    <!-- Canvas du Jeu -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Écran d'accueil / Customisation -->
     <div id="startScreen" class="ui-layer interactive">
-        <div class="glass-panel p-6 max-w-md w-[95%] text-center">
-            <h1 class="text-4xl sm:text-5xl text-green-700 mb-2 arcade-font drop-shadow-lg">TÊTE D'OR</h1>
-            <p class="text-gray-600 mb-4 text-sm sm:text-base">Jongle avec ton visage, évite les impacts !</p>
+        <div class="max-w-md w-[95%]">
+            <h1 class="text-5xl text-white text-center mb-6 arcade-font drop-shadow-[0_4px_0_rgba(0,0,0,0.3)] stroke-black" style="-webkit-text-stroke: 1px rgba(0,0,0,0.2);">TÊTE D'OR</h1>
 
-            <div class="flex gap-4 justify-center items-start mb-4">
-                
-                <!-- Photo Upload -->
-                <div class="relative group">
-                    <div class="face-preview-wrapper">
-                        <!-- Le conteneur qui coupe l'image (Ovale simple) -->
-                        <div class="face-mask-clip shadow-xl bg-gray-200">
-                            <img id="facePreview" src="" alt="Ton visage" class="hidden">
-                            <div id="placeholderFace" class="w-full h-full flex items-center justify-center text-4xl text-gray-400">
-                                
-                            </div>
+            <div class="glass-panel !p-0 !bg-transparent !border-0 !shadow-2xl">
+                <div class="main-tabs">
+                    <div id="tabMatch" class="main-tab-btn active" onclick="switchMainTab('match')">⚽ MATCH</div>
+                    <div id="tabVestiaire" class="main-tab-btn" onclick="switchMainTab('vestiaire')">👕 VESTIAIRE</div>
+                </div>
+
+                <div id="contentMatch" class="tab-content active">
+                    <div class="mb-6 text-center">
+                        <p class="text-gray-500 mb-2">Prêt pour le coup d'envoi ?</p>
+                        <div class="p-4 bg-green-50 rounded-xl border border-green-100 mb-4">
+                            <input type="text" id="playerNameInput" placeholder="Ton nom de joueur" class="w-full p-3 border-2 border-gray-200 rounded-lg text-center font-bold text-lg focus:border-green-500 focus:outline-none transition bg-white text-gray-700" maxlength="15">
                         </div>
-                        
-                        <!-- Le GUIDE visuel (Ovale simple) -->
-                        <svg class="face-guide-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <ellipse cx="50" cy="50" rx="45" ry="55" fill="none" stroke="#eab308" stroke-width="3" stroke-dasharray="8,4" />
-                            <!-- Yeux -->
-                            <ellipse cx="35" cy="45" rx="5" ry="3" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="2,2" />
-                            <ellipse cx="65" cy="45" rx="5" ry="3" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="2,2" />
-                            <!-- Bouche -->
-                            <path d="M 40,70 Q 50,75 60,70" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" stroke-dasharray="2,2" />
-                        </svg>
                     </div>
-
-                    <label for="photoInput" class="absolute -bottom-2 -right-2 bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded-full cursor-pointer shadow-xl transition transform active:scale-95 z-30">
-                        📸
-                    </label>
-                    <input type="file" id="photoInput" accept="image/*" capture="user">
+                    <div class="flex flex-col gap-3">
+                        <button id="startBtn" class="w-full btn-primary text-white text-2xl py-4 rounded-xl font-bold shadow-lg transition arcade-font">JOUER</button>
+                        <div class="flex gap-3 mt-2">
+                            <button id="showScoresBtn" class="flex-1 bg-white border-2 border-gray-200 hover:border-blue-400 text-gray-700 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-sm">🏆 Scores</button>
+                            <button id="toggleMusicBtn" class="flex-1 bg-white border-2 border-gray-200 hover:border-purple-400 text-gray-700 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-sm">🎵 Musique</button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Customisation Controls -->
-                <div class="flex flex-col gap-3 text-left bg-white/50 p-3 rounded-xl border border-white">
-                    <div>
-                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Maillot</span>
-                        <div class="flex gap-2" id="jerseyColors"></div>
+                <div id="contentVestiaire" class="tab-content">
+                    <div class="flex items-center gap-4 mb-6 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="relative group cursor-pointer" onclick="document.getElementById('photoInput').click()">
+                            <div class="face-preview-wrapper">
+                                <div class="face-mask-clip shadow-md bg-white">
+                                    <img id="facePreview" src="" alt="Visage" class="hidden">
+                                    <div id="placeholderFace" class="w-full h-full flex items-center justify-center text-4xl text-gray-300">👤</div>
+                                </div>
+                                <svg class="face-guide-overlay" viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse cx="50" cy="50" rx="45" ry="55" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4" /></svg>
+                            </div>
+                            <input type="file" id="photoInput" accept="image/*" capture="user">
+                        </div>
+                        <div class="text-sm text-gray-500 flex-1"><strong class="text-gray-800 block mb-1">Ton Visage</strong>Clique sur l'ovale pour ajouter ta photo.</div>
                     </div>
-                    <div>
-                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Short</span>
-                        <div class="flex gap-2" id="shortsColors"></div>
+                    <div class="space-y-5">
+                        <div><div class="section-title">Couleur de Peau</div><div class="flex gap-3 overflow-x-auto pb-2" id="skinColors"></div></div>
+                        <div><div class="section-title">Maillot</div><div class="flex gap-3 overflow-x-auto pb-2" id="jerseyColors"></div></div>
+                        <div><div class="section-title">Short</div><div class="flex gap-3 overflow-x-auto pb-2" id="shortsColors"></div></div>
                     </div>
                 </div>
             </div>
-
-            <input type="text" id="playerNameInput" placeholder="Ton nom de joueur" class="w-full p-2 mb-4 border-2 border-gray-300 rounded-lg text-center font-bold focus:border-blue-500 transition" maxlength="15">
-
-            <div class="flex gap-2 mb-4">
-                <button id="toggleMusicBtn" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg font-bold text-sm transition">
-                    🎵 Musique: OFF
-                </button>
-            </div>
-
-            <button id="startBtn" class="w-full btn-primary text-white text-xl py-3 rounded-xl font-bold shadow-[0_6px_0_rgb(21,128,61)] transition mb-2 arcade-font">
-                JOUER LE MATCH
-            </button>
-            <button id="showScoresBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white text-base py-2 rounded-xl font-bold shadow-[0_4px_0_rgb(29,78,216)] active:shadow-none active:translate-y-[4px] transition">
-                🏆 Meilleurs Scores
-            </button>
         </div>
     </div>
 
-    <!-- Interface en jeu -->
     <div id="hudLayer" class="ui-layer hidden !justify-start !items-start p-4">
         <div class="flex justify-between w-full items-start">
-            <div class="text-4xl text-white font-black drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] arcade-font">
-                <span id="scoreDisplay">0</span>
-            </div>
+            <div class="text-5xl text-white font-black drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] arcade-font stroke-black" style="-webkit-text-stroke: 2px black;"><span id="scoreDisplay">0</span></div>
             <div class="flex flex-col items-end gap-2">
-                <div id="levelDisplay" class="text-xl text-yellow-300 font-bold drop-shadow-lg bg-black/40 px-4 py-1 rounded-full">
-                    NIVEAU 1
-                </div>
-                <button id="muteBtnGame" class="bg-black/40 text-white p-2 rounded-full hover:bg-black/60 transition">
-                    🔊
-                </button>
+                <div id="levelDisplay" class="text-xl text-yellow-300 font-bold drop-shadow-lg bg-black/60 px-4 py-1 rounded-full border border-white/20">NIVEAU 1</div>
+                <button id="muteBtnGame" class="bg-black/40 text-white p-2 rounded-full hover:bg-black/60 transition backdrop-blur-sm">🔊</button>
             </div>
         </div>
     </div>
 
-    <!-- Écran Game Over -->
     <div id="gameOverScreen" class="ui-layer interactive hidden">
         <div class="glass-panel p-8 max-w-sm w-[90%] text-center">
-            <h2 class="text-5xl text-red-600 mb-4 arcade-font drop-shadow-md">FIN DU MATCH</h2>
-            <p class="text-gray-700 text-2xl mb-6">Score Final: <span id="finalScore" class="font-bold text-red-600">0</span></p>
-            
-            <div id="highScoreContainer" class="mb-6 text-yellow-600 font-bold text-lg hidden">
-                NOUVEAU RECORD ! 🏆
+            <h2 class="text-5xl text-red-500 mb-2 arcade-font drop-shadow-sm">FIN DU MATCH</h2>
+            <p class="text-gray-500 text-sm uppercase font-bold tracking-widest mb-6">Coup de sifflet final</p>
+            <div class="bg-gray-100 rounded-xl p-4 mb-6">
+                 <p class="text-gray-500 text-sm">Score Final</p>
+                 <span id="finalScore" class="font-black text-6xl text-slate-800">0</span>
             </div>
-
-            <button id="restartBtn" class="w-full btn-primary bg-blue-500 text-white text-xl py-3 rounded-xl font-bold shadow-[0_6px_0_rgb(29,78,216)] transition mb-3 arcade-font">
-                REJOUER
-            </button>
-            <button id="shareBtn" class="w-full bg-teal-500 hover:bg-teal-600 text-white text-lg py-3 rounded-xl font-bold shadow-[0_4px_0_rgb(13,148,136)] active:shadow-none active:translate-y-[4px] transition mb-3">
-                Partager
-            </button>
-            <button id="changeFaceBtn" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 text-lg py-2 rounded-xl font-bold transition">
-                Menu Principal
-            </button>
+            <button id="restartBtn" class="w-full btn-primary bg-blue-500 text-white text-xl py-3 rounded-xl font-bold shadow-lg transition mb-3 arcade-font">REJOUER</button>
+            <button id="changeFaceBtn" class="w-full bg-white border-2 border-gray-200 hover:bg-gray-50 text-gray-700 text-lg py-2 rounded-xl font-bold transition">Menu Principal</button>
         </div>
     </div>
 
-    <!-- Modal Tableau des Scores -->
     <div id="scoresModal" class="modal hidden interactive">
-        <div class="glass-panel modal-content p-6 max-w-lg w-[90%] text-center">
-            <h2 class="text-3xl text-blue-600 mb-4 arcade-font">CLASSEMENT</h2>
-            
-            <!-- TABS -->
-            <div class="flex border-b mb-4">
-                <div id="tabLocal" class="tab-btn active" onclick="switchTab('local')">LOCAL</div>
-                <div id="tabWorld" class="tab-btn" onclick="switchTab('world')">MONDE 🌍</div>
+        <div class="glass-panel modal-content p-0 max-w-lg w-[90%] text-center overflow-hidden">
+            <div class="bg-blue-600 text-white p-4"><h2 class="text-2xl arcade-font">CLASSEMENT</h2></div>
+            <div class="flex border-b bg-gray-50">
+                <div id="tabLocal" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('local')">LOCAL</div>
+                <div id="tabWorld" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('world')">MONDE 🌍</div>
             </div>
-
-            <div id="scoresTable" class="text-left min-h-[200px]">
-                <!-- Scores injected here -->
-            </div>
-            
-            <button id="closeScoresModal" class="mt-6 w-full bg-red-500 hover:bg-red-600 text-white text-lg py-3 rounded-xl font-bold transition">
-                Fermer
-            </button>
+            <div id="scoresTable" class="text-left min-h-[250px] p-0 bg-white"></div>
+            <div class="p-4 border-t"><button id="closeScoresModal" class="w-full bg-red-100 hover:bg-red-200 text-red-600 text-lg py-2 rounded-xl font-bold transition">Fermer</button></div>
         </div>
     </div>
 
     <script>
-        /**
-         * --- FIREBASE SETUP ---
-         */
+        /** --- FIREBASE ENGINE --- **/
         let db, auth;
         let isFirebaseReady = false;
-        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'default-soccer-app';
 
         async function initFirebase() {
             try {
-                if (window.firebaseModules && typeof __firebase_config !== 'undefined') {
-                    const { initializeApp, getAuth, signInAnonymously, getFirestore } = window.firebaseModules;
-                    const firebaseConfig = JSON.parse(__firebase_config);
+                if (window.firebaseModules) {
+                    const { initializeApp, getAuth, signInAnonymously, getFirestore, firebaseConfig } = window.firebaseModules;
+                    
+                    // Initialisation avec ta configuration
                     const app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
                     
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                         // Custom token flow if available
-                         const { signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-                         await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    // Connexion anonyme pour pouvoir écrire dans la base
+                    await signInAnonymously(auth);
+                    
                     isFirebaseReady = true;
-                    console.log("Firebase initialized");
+                    console.log("Firebase connecté au projet Tête d'Or !");
                 }
             } catch (e) {
-                console.error("Firebase init error:", e);
-                // Fallback to local only mode silently
+                console.error("Erreur Firebase:", e);
             }
         }
-
-        // Trigger init immediately
         initFirebase();
 
-        /**
-         * --- AUDIO ENGINE ---
-         */
+        /** --- AUDIO ENGINE --- **/
         const AudioEngine = {
             ctx: null, isPlaying: false, osc: null, gain: null, nextNoteTime: 0, noteIndex: 0, tempo: 0.15,
             melody: [261.63, 261.63, 293.66, 261.63, 349.23, 329.63, 0, 261.63, 261.63, 293.66, 261.63, 392.00, 349.23, 0, 329.63, 329.63, 440.00, 392.00, 349.23, 329.63, 293.66, 0],
@@ -381,13 +220,9 @@
             }
         };
 
-        /**
-         * CONFIGURATION
-         */
+        /** --- GAME CONFIG --- **/
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // UI Refs
         const startScreen = document.getElementById('startScreen');
         const hudLayer = document.getElementById('hudLayer');
         const gameOverScreen = document.getElementById('gameOverScreen');
@@ -401,80 +236,45 @@
         const toggleMusicBtn = document.getElementById('toggleMusicBtn');
         const muteBtnGame = document.getElementById('muteBtnGame');
 
-        // Game State
-        let gameRunning = false;
-        let score = 0;
-        let animationId;
-        let lastTime = 0;
-        let difficultyLevel = 1;
-        let userFaceImage = null; 
-        let playerHitTimer = 0;
-        
-        // Physics
-        const GRAVITY = 0.55; 
-        const AIR_RESISTANCE = 0.99;
-        const BOUNCE_FORCE = -15; 
-        const PLAYER_RECOIL_FORCE = 15; 
-        const PLAYER_SMOOTHING_FACTOR = 0.5;
-
-        // Entities
-        let player = {
-            x: 0,
-            y: 0,
-            width: 80,
-            height: 140,
-            headRadius: 35,
-            vx: 0,
-            jerseyColor: '#3b82f6',
-            shortsColor: '#ffffff'
-        };
-
+        let gameRunning = false, score = 0, animationId, lastTime = 0, difficultyLevel = 1, userFaceImage = null, playerHitTimer = 0;
+        const GRAVITY = 0.55, AIR_RESISTANCE = 0.99, BOUNCE_FORCE = -15, PLAYER_RECOIL_FORCE = 15, PLAYER_SMOOTHING_FACTOR = 0.5;
+        let player = { x: 0, y: 0, width: 80, height: 140, headRadius: 35, vx: 0, jerseyColor: '#3b82f6', shortsColor: '#ffffff', skinColor: '#fca5a5' };
         let ball = { x: 0, y: 0, radius: 20, vx: 0, vy: 0, rotation: 0 };
-        let obstacles = [];
-        let particles = [];
-        
-        const jerseyColors = ['#3b82f6', '#ef4444', '#22c55e', '#eab308', '#a855f7', '#111827'];
-        const shortsColors = ['#ffffff', '#1f2937', '#3b82f6', '#ef4444'];
+        let obstacles = [], particles = [];
+        const skinColors = ['#fca5a5', '#e0ac69', '#aa724b', '#5c3a21', '#fde047', '#eeccab', '#3b2f2f'];
+        const jerseyColors = ['#3b82f6', '#ef4444', '#22c55e', '#eab308', '#a855f7', '#111827', '#ffffff'];
+        const shortsColors = ['#ffffff', '#1f2937', '#3b82f6', '#ef4444', '#000000'];
 
         function initCustomizationUI() {
-            const jContainer = document.getElementById('jerseyColors');
-            const sContainer = document.getElementById('shortsColors');
-            jerseyColors.forEach(color => {
-                const el = document.createElement('div');
-                el.className = `color-option ${color === player.jerseyColor ? 'selected' : ''}`;
-                el.style.backgroundColor = color;
-                el.onclick = () => { player.jerseyColor = color; updateSelection(jContainer, el); };
-                jContainer.appendChild(el);
-            });
-            shortsColors.forEach(color => {
-                const el = document.createElement('div');
-                el.className = `color-option ${color === player.shortsColor ? 'selected' : ''}`;
-                el.style.backgroundColor = color;
-                el.onclick = () => { player.shortsColor = color; updateSelection(sContainer, el); };
-                sContainer.appendChild(el);
-            });
+            const createOptions = (colors, containerId, prop) => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                colors.forEach(color => {
+                    const el = document.createElement('div');
+                    el.className = `color-option ${color === player[prop] ? 'selected' : ''}`;
+                    el.style.backgroundColor = color;
+                    el.onclick = () => { player[prop] = color; updateSelection(container, el); };
+                    container.appendChild(el);
+                });
+            };
+            createOptions(skinColors, 'skinColors', 'skinColor');
+            createOptions(jerseyColors, 'jerseyColors', 'jerseyColor');
+            createOptions(shortsColors, 'shortsColors', 'shortsColor');
         }
-
-        function updateSelection(container, selectedEl) {
-            Array.from(container.children).forEach(c => c.classList.remove('selected'));
-            selectedEl.classList.add('selected');
-        }
-
-        function setPlayerY() {
-            player.y = canvas.height - 40; 
-        }
-
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            setPlayerY();
-        }
+        function updateSelection(container, selectedEl) { Array.from(container.children).forEach(c => c.classList.remove('selected')); selectedEl.classList.add('selected'); }
+        window.switchMainTab = function(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.main-tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('content' + (tabName.charAt(0).toUpperCase() + tabName.slice(1))).classList.add('active');
+            document.getElementById('tab' + (tabName.charAt(0).toUpperCase() + tabName.slice(1))).classList.add('active');
+        };
+        function setPlayerY() { player.y = canvas.height - 40; }
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; setPlayerY(); if (!gameRunning) player.x = canvas.width / 2; }
         window.addEventListener('resize', resize);
         
         function updateMusicButtonUI() {
-            const text = AudioEngine.isPlaying ? "🎵 Musique: ON" : "🎵 Musique: OFF";
-            toggleMusicBtn.textContent = text;
-            toggleMusicBtn.className = AudioEngine.isPlaying ? "flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-bold text-sm transition" : "flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg font-bold text-sm transition";
+            toggleMusicBtn.innerHTML = AudioEngine.isPlaying ? "🎵 ON" : "🎵 OFF";
+            toggleMusicBtn.classList.toggle('bg-purple-100', AudioEngine.isPlaying); toggleMusicBtn.classList.toggle('text-purple-600', AudioEngine.isPlaying); toggleMusicBtn.classList.toggle('border-purple-300', AudioEngine.isPlaying);
             muteBtnGame.textContent = AudioEngine.isPlaying ? "🔊" : "🔇";
         }
         toggleMusicBtn.addEventListener('click', () => { AudioEngine.toggle(); updateMusicButtonUI(); });
@@ -482,57 +282,40 @@
 
         function initGame() {
             score = 0; difficultyLevel = 1; scoreDisplay.textContent = "0";
-            levelDisplay.textContent = "NIVEAU 1";
-            levelDisplay.className = "text-xl text-yellow-300 font-bold drop-shadow-lg bg-black/40 px-4 py-1 rounded-full";
-            player.x = canvas.width / 2;
-            setPlayerY(); 
-            resetBall();
-            obstacles = []; particles = []; gameRunning = true; lastTime = performance.now();
-            requestAnimationFrame(gameLoop);
+            levelDisplay.textContent = "NIVEAU 1"; levelDisplay.className = "text-xl text-yellow-300 font-bold drop-shadow-lg bg-black/40 px-4 py-1 rounded-full";
+            player.x = canvas.width / 2; setPlayerY(); resetBall(); obstacles = []; particles = []; gameRunning = true; lastTime = performance.now();
         }
 
         function resetBall() {
             const side = Math.random() < 0.5 ? 'left' : 'right';
-            ball.x = side === 'left' ? -30 : canvas.width + 30;
-            ball.y = canvas.height / 3; 
-            const speedX = 6 + Math.random() * 4;
-            ball.vx = side === 'left' ? speedX : -speedX;
-            ball.vy = -8 - Math.random() * 5; 
-            ball.rotation = 0;
+            ball.x = side === 'left' ? -30 : canvas.width + 30; ball.y = canvas.height / 3; 
+            const speedX = 6 + Math.random() * 4; ball.vx = side === 'left' ? speedX : -speedX; ball.vy = -8 - Math.random() * 5; ball.rotation = 0;
         }
 
-        function gameLoop(timestamp) {
-            if (!gameRunning) return;
+        function masterLoop(timestamp) {
             const dt = timestamp - lastTime; lastTime = timestamp;
-            update(); draw();
-            animationId = requestAnimationFrame(gameLoop);
+            if (gameRunning) update(); else player.x += (canvas.width / 2 - player.x) * 0.1;
+            draw(); animationId = requestAnimationFrame(masterLoop);
         }
 
         function update() {
-            ball.vy += GRAVITY; ball.vx *= AIR_RESISTANCE;
-            ball.x += ball.vx; ball.y += ball.vy; ball.rotation += ball.vx * 0.05;
-
+            ball.vy += GRAVITY; ball.vx *= AIR_RESISTANCE; ball.x += ball.vx; ball.y += ball.vy; ball.rotation += ball.vx * 0.05;
             if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.vx *= -0.8; } 
             else if (ball.x + ball.radius > canvas.width) { ball.x = canvas.width - ball.radius; ball.vx *= -0.8; }
             if (ball.y - ball.radius > canvas.height - 40) { endGame(); }
 
             const headCenterY = player.y - 155; 
             const dx = ball.x - player.x; const dy = ball.y - headCenterY;
-            const distance = Math.sqrt(dx*dx + dy*dy);
-            const minDist = ball.radius + player.headRadius * 0.8; 
+            const distance = Math.sqrt(dx*dx + dy*dy); const minDist = ball.radius + player.headRadius * 0.8; 
 
             if (distance < minDist && ball.vy > 0) { 
                 const impactRatio = dx / (player.headRadius * 1.5); 
-                ball.vy = BOUNCE_FORCE; ball.vx = impactRatio * 15; 
-                ball.y = headCenterY - minDist - 2; 
+                ball.vy = BOUNCE_FORCE; ball.vx = impactRatio * 15; ball.y = headCenterY - minDist - 2; 
                 score++; scoreDisplay.textContent = score;
-                createParticles(ball.x, ball.y + ball.radius, 15, '#ffffff', 5);
-                createParticles(ball.x, ball.y + ball.radius, 7, '#fbbf24', 3);
+                createParticles(ball.x, ball.y + ball.radius, 15, '#ffffff', 5); createParticles(ball.x, ball.y + ball.radius, 7, '#fbbf24', 3);
                 checkDifficulty();
             }
-            
             if(playerHitTimer > 0) playerHitTimer--;
-
             if (Math.random() < 0.008 * difficultyLevel) spawnObstacle();
 
             obstacles.forEach((obs, index) => {
@@ -540,35 +323,22 @@
                 if (obs.x < -100 || obs.x > canvas.width + 100 || obs.y > canvas.height + 100) { obstacles.splice(index, 1); return; }
                 const dxB = ball.x - obs.x; const dyB = ball.y - obs.y;
                 if (Math.sqrt(dxB * dxB + dyB * dyB) < ball.radius + 20) { 
-                    createParticles(ball.x, ball.y, 8, '#9ca3af', 3); 
-                    ball.vx = (Math.random() - 0.5) * 25; ball.vy = (Math.random() - 0.5) * 20; 
-                    obstacles.splice(index, 1); return;
+                    createParticles(ball.x, ball.y, 8, '#9ca3af', 3); ball.vx = (Math.random() - 0.5) * 25; ball.vy = (Math.random() - 0.5) * 20; obstacles.splice(index, 1); return;
                 }
                 const playerBodyTop = player.y - 140; const playerBodyBottom = player.y - 5;
                 if (obs.x > player.x - 30 && obs.x < player.x + 30 && obs.y > playerBodyTop && obs.y < playerBodyBottom) {
-                    if (playerHitTimer === 0) {
-                        createParticles(obs.x, obs.y, 15, '#ef4444', 4);
-                        player.vx = obs.vx > 0 ? -PLAYER_RECOIL_FORCE : PLAYER_RECOIL_FORCE; 
-                        playerHitTimer = 30; setTimeout(() => player.vx = 0, 100); 
-                    }
+                    if (playerHitTimer === 0) { createParticles(obs.x, obs.y, 15, '#ef4444', 4); player.vx = obs.vx > 0 ? -PLAYER_RECOIL_FORCE : PLAYER_RECOIL_FORCE; playerHitTimer = 30; setTimeout(() => player.vx = 0, 100); }
                     obstacles.splice(index, 1); return;
                 }
             });
-            
-            player.x += player.vx;
-            if (player.x < 40) player.x = 40; if (player.x > canvas.width - 40) player.x = canvas.width - 40;
-
-            particles.forEach((p, index) => {
-                p.x += p.vx; p.y += p.vy; p.life--; p.alpha = p.life / 30; p.radius *= 0.95;
-                if (p.life <= 0) particles.splice(index, 1);
-            });
+            player.x += player.vx; if (player.x < 40) player.x = 40; if (player.x > canvas.width - 40) player.x = canvas.width - 40;
+            particles.forEach((p, index) => { p.x += p.vx; p.y += p.vy; p.life--; p.alpha = p.life / 30; p.radius *= 0.95; if (p.life <= 0) particles.splice(index, 1); });
         }
 
         function checkDifficulty() {
             const newLevel = Math.min(10, Math.floor(score / 10) + 1);
             if (newLevel !== difficultyLevel) {
-                difficultyLevel = newLevel;
-                levelDisplay.textContent = "NIVEAU " + difficultyLevel;
+                difficultyLevel = newLevel; levelDisplay.textContent = "NIVEAU " + difficultyLevel;
                 const levelColors = ['text-yellow-300', 'text-orange-400', 'text-red-500', 'text-pink-500', 'text-purple-500', 'text-indigo-400', 'text-cyan-300', 'text-lime-300', 'text-amber-500', 'text-rose-600'];
                 levelDisplay.className = `text-xl font-bold drop-shadow-lg bg-black/40 px-4 py-1 rounded-full ${levelColors[newLevel - 1]}`;
             }
@@ -576,255 +346,159 @@
 
         function spawnObstacle() {
             const side = Math.random() < 0.5 ? 'left' : 'right';
-            const r = Math.random();
-            let type;
-            if (r < 0.25) type = 'card_red'; else if (r < 0.5) type = 'card_yellow'; else if (r < 0.7) type = 'boot'; else if (r < 0.85) type = 'whistle'; else type = 'bottle';
-            
+            const r = Math.random(); let type = r < 0.25 ? 'card_red' : r < 0.5 ? 'card_yellow' : r < 0.7 ? 'boot' : r < 0.85 ? 'whistle' : 'bottle';
             const baseSpeed = 3; const speedMultiplier = 1 + (difficultyLevel - 1) * 0.4;
-            obstacles.push({
-                type: type,
-                x: side === 'left' ? -30 : canvas.width + 30,
-                y: Math.random() * (canvas.height - 250) + 50, 
-                vx: side === 'left' ? (baseSpeed + Math.random() * speedMultiplier) : -(baseSpeed + Math.random() * speedMultiplier),
-                vy: (Math.random() - 0.5) * 2, rotation: 0, rotSpeed: (Math.random() - 0.5) * 0.15
-            });
+            obstacles.push({ type: type, x: side === 'left' ? -30 : canvas.width + 30, y: Math.random() * (canvas.height - 250) + 50, vx: side === 'left' ? (baseSpeed + Math.random() * speedMultiplier) : -(baseSpeed + Math.random() * speedMultiplier), vy: (Math.random() - 0.5) * 2, rotation: 0, rotSpeed: (Math.random() - 0.5) * 0.15 });
         }
 
         function draw() {
             ctx.fillStyle = '#10b981'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 4;
             ctx.beginPath(); ctx.moveTo(canvas.width / 2, canvas.height - 40); ctx.lineTo(canvas.width / 2, 0); ctx.stroke();
-            ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height - 40, 80, Math.PI, Math.PI * 2, false); ctx.stroke();
+            ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height - 40, 100, Math.PI, Math.PI * 2, false); ctx.stroke();
             ctx.fillStyle = '#059669'; ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
-
             if (playerHitTimer % 6 < 3) drawPlayer();
-            obstacles.forEach(drawObstacle); drawBall();
-            particles.forEach(p => {
-                ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.globalAlpha = 1;
-            });
+            if (gameRunning) {
+                obstacles.forEach(drawObstacle); drawBall();
+                particles.forEach(p => { ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; });
+            }
         }
 
         function drawPlayer() {
             const centerX = player.x; const groundY = player.y;
-            ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(centerX, groundY, 30, 8, 0, 0, Math.PI * 2); ctx.fill();
-
-            const legColor = '#fca5a5'; const bootColor = '#1f2937';
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(centerX, groundY, 35, 10, 0, 0, Math.PI * 2); ctx.fill();
             const bootTopY = groundY - 10; const legTopY = bootTopY - 50; const shortsBottomY = legTopY + 10; const shortsTopY = shortsBottomY - 30; const jerseyTopY = shortsTopY - 60; const headY = jerseyTopY - 15; 
-            
-            ctx.fillStyle = legColor; ctx.beginPath(); ctx.roundRect(centerX - 15, legTopY, 10, 50, 5); ctx.roundRect(centerX + 5, legTopY, 10, 50, 5); ctx.fill();
-            ctx.fillStyle = bootColor; ctx.beginPath(); ctx.roundRect(centerX - 20, bootTopY, 20, 10, [0,0,5,5]); ctx.roundRect(centerX, bootTopY, 20, 10, [0,0,5,5]); ctx.fill();
-            ctx.fillStyle = player.shortsColor; ctx.beginPath(); ctx.roundRect(centerX - 20, shortsTopY, 40, 30, [5,5,0,0]); ctx.fill();
+            ctx.fillStyle = player.skinColor; ctx.beginPath(); ctx.roundRect(centerX - 15, legTopY, 10, 50, 5); ctx.roundRect(centerX + 5, legTopY, 10, 50, 5); ctx.fill();
+            ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.roundRect(centerX - 20, bootTopY, 20, 10, [0,0,5,5]); ctx.roundRect(centerX, bootTopY, 20, 10, [0,0,5,5]); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.fillRect(centerX - 18, bootTopY+3, 8, 2); ctx.fillRect(centerX + 2, bootTopY+3, 8, 2);
+            ctx.fillStyle = player.shortsColor; ctx.beginPath(); ctx.roundRect(centerX - 20, shortsTopY, 40, 30, [5,5,5,5]); ctx.fill();
+            ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(centerX-20, shortsTopY, 4, 30); ctx.fillRect(centerX+16, shortsTopY, 4, 30);
             ctx.fillStyle = player.jerseyColor; ctx.beginPath(); ctx.roundRect(centerX - 25, jerseyTopY, 50, 60, 10); ctx.fill();
-            ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.roundRect(centerX - 25, jerseyTopY, 50, 60, 10); ctx.fill();
-            ctx.fillStyle = 'white'; ctx.font = 'bold 20px Nunito'; ctx.textAlign = 'center'; ctx.fillText('10', centerX, jerseyTopY + 30);
-            ctx.fillStyle = legColor; ctx.beginPath(); ctx.arc(centerX - 35, shortsBottomY - 20, 8, 0, Math.PI*2); ctx.arc(centerX + 35, shortsBottomY - 20, 8, 0, Math.PI*2); ctx.fill();
-
-            // --- TÊTE SIMPLE (Ovale, sans oreilles) ---
-            const headWidth = player.headRadius * 2;
-            const headHeight = player.headRadius * 2.3;
-            const headX = centerX;
-            const headYPos = headY;
-
-            const facePath = new Path2D();
-            facePath.ellipse(headX, headYPos, headWidth / 2, headHeight / 2, 0, 0, Math.PI * 2);
-            
-            ctx.save();
-            ctx.clip(facePath); 
-
-            if (userFaceImage) {
-                const drawW = headWidth * 1.2;
-                const drawH = headHeight * 1.2;
-                const drawX = headX - drawW / 2;
-                const drawY = headYPos - drawH / 2;
-                ctx.drawImage(userFaceImage, 0, 0, userFaceImage.width, userFaceImage.height, drawX, drawY, drawW, drawH);
-            } else {
-                ctx.fillStyle = legColor; 
-                ctx.fill(facePath);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.moveTo(centerX-25, jerseyTopY); ctx.lineTo(centerX+25, jerseyTopY); ctx.lineTo(centerX-25, jerseyTopY+60); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = 'bold 22px Nunito'; ctx.textAlign = 'center'; ctx.fillText('10', centerX, jerseyTopY + 38);
+            ctx.fillStyle = player.skinColor; ctx.beginPath(); ctx.arc(centerX - 10, shortsBottomY + 5, 6, 0, Math.PI*2); ctx.arc(centerX + 10, shortsBottomY + 5, 6, 0, Math.PI*2); ctx.fill();
+            const headWidth = player.headRadius * 2; const headHeight = player.headRadius * 2.3; const facePath = new Path2D(); facePath.ellipse(centerX, headY, headWidth / 2, headHeight / 2, 0, 0, Math.PI * 2);
+            ctx.save(); ctx.clip(facePath); 
+            if (userFaceImage) { ctx.drawImage(userFaceImage, 0, 0, userFaceImage.width, userFaceImage.height, centerX - headWidth * 0.6, headY - headHeight * 0.6, headWidth * 1.2, headHeight * 1.2); } 
+            else {
+                ctx.fillStyle = player.skinColor; ctx.fill(facePath);
                 ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(centerX - 10, headY - 5, 8, 0, Math.PI*2); ctx.arc(centerX + 10, headY - 5, 8, 0, Math.PI*2); ctx.fill();
                 ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(centerX - 10, headY - 5, 3, 0, Math.PI*2); ctx.arc(centerX + 10, headY - 5, 3, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.arc(centerX, headY + 15, 8, 0, Math.PI, false); ctx.stroke();
             }
-            ctx.restore();
-
-            ctx.lineWidth = 4; ctx.strokeStyle = '#333'; ctx.stroke(facePath);
+            ctx.restore(); ctx.lineWidth = 4; ctx.strokeStyle = '#333'; ctx.stroke(facePath);
         }
 
         function drawBall() {
             ctx.save(); ctx.translate(ball.x, ball.y); ctx.rotate(ball.rotation);
             ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.arc(3, 3, ball.radius, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(0, 0, ball.radius, 0, Math.PI * 2); ctx.fill();
-            const gradient = ctx.createRadialGradient(-ball.radius/3, -ball.radius/3, 0, 0, 0, ball.radius * 1.5);
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            const gradient = ctx.createRadialGradient(-ball.radius/3, -ball.radius/3, 0, 0, 0, ball.radius * 1.5); gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
             ctx.fillStyle = gradient; ctx.fill();
-            ctx.fillStyle = '#333'; const pentagonSize = 7;
-            for(let i=0; i<6; i++) {
-                ctx.beginPath();
-                const angle = (Math.PI * 2 / 12) * (i * 2 + 1);
-                const x = Math.cos(angle) * (ball.radius * 0.5); const y = Math.sin(angle) * (ball.radius * 0.5);
-                ctx.arc(x, y, pentagonSize, 0, Math.PI*2); ctx.fill();
-            }
-            ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, ball.radius, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
+            ctx.fillStyle = '#333'; for(let i=0; i<6; i++) { ctx.beginPath(); const angle = (Math.PI * 2 / 12) * (i * 2 + 1); ctx.arc(Math.cos(angle) * ball.radius * 0.5, Math.sin(angle) * ball.radius * 0.5, 7, 0, Math.PI*2); ctx.fill(); }
+            ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, ball.radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
         }
         
         function drawObstacle(obs) {
             ctx.save(); ctx.translate(obs.x, obs.y); ctx.rotate(obs.rotation);
             if (obs.type === 'whistle') {
-                ctx.fillStyle = '#9ca3af'; ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.rect(-15, -10, 25, 20); ctx.fill(); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(-25, -5); ctx.lineTo(-25, 5); ctx.lineTo(-15, 0); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#9ca3af'; ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 2; ctx.beginPath(); ctx.rect(-15, -10, 25, 20); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(-25, -5); ctx.lineTo(-25, 5); ctx.lineTo(-15, 0); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#d1d5db'; ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI*2); ctx.fill();
             } else if (obs.type === 'bottle') {
-                ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.roundRect(-10, -20, 20, 40, 5); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#111827'; ctx.fillRect(-8, -25, 16, 5);
-                ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-10, -5, 20, 5);
+                ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(-10, -20, 20, 40, 5); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#111827'; ctx.fillRect(-8, -25, 16, 5); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(-10, -5, 20, 5);
             } else if (obs.type === 'boot') {
-                ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.roundRect(-25, -10, 40, 20, [10, 10, 5, 5]); ctx.fill();
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-15, 5); ctx.moveTo(-5, -5); ctx.lineTo(-10, 5); ctx.stroke();
+                ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.roundRect(-25, -10, 40, 20, [10, 10, 5, 5]); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-15, 5); ctx.moveTo(-5, -5); ctx.lineTo(-10, 5); ctx.stroke();
             } else {
-                const isRed = obs.type === 'card_red'; const color = isRed ? '#dc2626' : '#facc15'; 
-                ctx.fillStyle = color; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.fillRect(-15, -20, 30, 40); ctx.strokeRect(-15, -20, 30, 40);
+                const isRed = obs.type === 'card_red'; ctx.fillStyle = isRed ? '#dc2626' : '#facc15'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.fillRect(-15, -20, 30, 40); ctx.strokeRect(-15, -20, 30, 40);
             }
             ctx.restore();
         }
+        function createParticles(x, y, count, color, minRadius = 2) { for (let i = 0; i < count; i++) { particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 1.5) * 8, radius: Math.random() * 3 + minRadius, color: color, life: 30 + Math.random() * 20, alpha: 1 }); } }
+        function handleInput(clientX) { let newX = clientX; if (newX < 40) newX = 40; if (newX > canvas.width - 40) newX = canvas.width - 40; player.x += (newX - player.x) * PLAYER_SMOOTHING_FACTOR; }
+        canvas.addEventListener('mousemove', (e) => handleInput(e.clientX)); canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e.touches[0].clientX); }, { passive: false });
+        window.addEventListener('keydown', (e) => { if(e.key === "ArrowLeft" || e.key === "q") player.x = Math.max(40, player.x - 20); if(e.key === "ArrowRight" || e.key === "d") player.x = Math.min(canvas.width - 40, player.x + 20); });
 
-        function createParticles(x, y, count, color, minRadius = 2) {
-            for (let i = 0; i < count; i++) {
-                particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 1.5) * 8, radius: Math.random() * 3 + minRadius, color: color, life: 30 + Math.random() * 20, alpha: 1 });
-            }
-        }
-
-        function handleInput(clientX) {
-            let newX = clientX;
-            if (newX < 40) newX = 40; if (newX > canvas.width - 40) newX = canvas.width - 40;
-            player.x += (newX - player.x) * PLAYER_SMOOTHING_FACTOR; 
-        }
-
-        canvas.addEventListener('mousemove', (e) => { if(gameRunning) handleInput(e.clientX); });
-        canvas.addEventListener('touchmove', (e) => { if(gameRunning) { e.preventDefault(); handleInput(e.touches[0].clientX); } }, { passive: false });
-        window.addEventListener('keydown', (e) => {
-            if(!gameRunning) return;
-            if(e.key === "ArrowLeft" || e.key === "q") player.x = Math.max(40, player.x - 20);
-            if(e.key === "ArrowRight" || e.key === "d") player.x = Math.min(canvas.width - 40, player.x + 20);
-        });
-
-        // --- SCORING SYSTEM (LOCAL & WORLD) ---
+        /** --- SCORES LOCAL & WORLD --- **/
         const SCORE_KEY = 'tete_dor_highscores';
         let currentTab = 'local';
 
         function loadLocalScores() { try { return JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch { return []; } }
         
         async function saveScore(name, score) {
-            // 1. Save Local
-            let scores = loadLocalScores();
-            scores.push({ name: name || "Anonyme", score: score });
-            scores.sort((a, b) => b.score - a.score); 
-            scores = scores.slice(0, 10);
-            localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
-
-            // 2. Save World (if Firebase is ready)
+            // 1. Local
+            let scores = loadLocalScores(); scores.push({ name: name || "Anonyme", score: score }); scores.sort((a, b) => b.score - a.score); scores = scores.slice(0, 10); localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
+            // 2. World (Firebase)
             if (isFirebaseReady) {
                 try {
                     const { collection, addDoc } = window.firebaseModules;
-                    // Path Rule: /artifacts/{appId}/public/data/scores
-                    await addDoc(collection(db, 'artifacts', APP_ID, 'public', 'data', 'scores'), {
-                        name: name || "Anonyme",
-                        score: score,
-                        timestamp: Date.now()
-                    });
-                } catch (e) {
-                    console.error("Error saving to cloud:", e);
-                }
+                    // On écrit dans une collection simple "scores"
+                    await addDoc(collection(db, 'scores'), { name: name || "Anonyme", score: score, timestamp: Date.now() });
+                } catch (e) { console.error("Erreur sauvegarde cloud:", e); }
             }
         }
         
         window.switchTab = function(tab) {
             currentTab = tab;
-            document.getElementById('tabLocal').className = tab === 'local' ? 'tab-btn active' : 'tab-btn';
-            document.getElementById('tabWorld').className = tab === 'world' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('tabLocal').className = tab === 'local' ? 'tab-btn p-3 flex-1 font-bold text-gray-800 cursor-pointer border-b-4 border-blue-500 bg-white' : 'tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100';
+            document.getElementById('tabWorld').className = tab === 'world' ? 'tab-btn p-3 flex-1 font-bold text-gray-800 cursor-pointer border-b-4 border-blue-500 bg-white' : 'tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100';
             renderScores();
         };
 
         async function renderScores() {
             const container = document.getElementById('scoresTable');
-            container.innerHTML = '<p class="text-center p-4 text-gray-500">Chargement...</p>';
-            
+            container.innerHTML = '<div class="flex justify-center items-center h-full p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
             let scores = [];
 
             if (currentTab === 'local') {
                 scores = loadLocalScores();
+                displayScoresList(scores, container);
             } else {
-                // Fetch World Scores
                 if (isFirebaseReady) {
                     try {
-                        const { collection, getDocs } = window.firebaseModules;
-                        const querySnapshot = await getDocs(collection(db, 'artifacts', APP_ID, 'public', 'data', 'scores'));
+                        const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
+                        // On récupère les 10 meilleurs scores, triés par "score" décroissant
+                        const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(10));
+                        const querySnapshot = await getDocs(q);
                         scores = querySnapshot.docs.map(doc => doc.data());
-                        // Client-side sort (Rule 2 compliancy)
-                        scores.sort((a, b) => b.score - a.score);
-                        scores = scores.slice(0, 10); // Top 10
+                        displayScoresList(scores, container);
                     } catch (e) {
-                        console.error("Fetch error:", e);
-                        container.innerHTML = '<p class="text-center p-4 text-red-500">Erreur de connexion.</p>';
-                        return;
+                        console.error("Erreur lecture:", e);
+                        container.innerHTML = '<p class="text-center p-4 text-red-500">Erreur de connexion.<br>Vérifie tes Règles Firebase.</p>';
                     }
                 } else {
                     container.innerHTML = '<p class="text-center p-4 text-gray-500">Mode hors ligne.</p>';
-                    return;
                 }
             }
+        }
 
-            let html = '<table class="w-full border-collapse"><thead><tr class="bg-blue-500 text-white arcade-font"><th class="p-2">#</th><th class="p-2 text-left">Nom</th><th class="p-2">Score</th></tr></thead><tbody>';
-            
-            if (scores.length === 0) {
-                html += `<tr><td colspan="3" class="p-4 text-center text-gray-500 score-row">Aucun score enregistré.</td></tr>`;
-            } else {
+        function displayScoresList(scores, container) {
+            let html = '<table class="w-full border-collapse"><thead><tr class="text-gray-500 text-sm border-b"><th class="p-3 text-center">#</th><th class="p-3 text-left">JOUEUR</th><th class="p-3 text-right">SCORE</th></tr></thead><tbody>';
+            if (scores.length === 0) { html += `<tr><td colspan="3" class="p-8 text-center text-gray-400 italic">Aucun score pour le moment.<br>Sois le premier !</td></tr>`; } 
+            else {
                 scores.forEach((s, i) => { 
-                    html += `<tr class="score-row"><td class="p-2 text-center font-bold">${i + 1}</td><td class="p-2">${s.name}</td><td class="p-2 text-center text-green-600 font-bold">${s.score}</td></tr>`; 
+                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
+                    const rowClass = i < 3 ? 'bg-yellow-50 font-bold' : (i % 2 === 0 ? 'bg-white' : 'bg-gray-50');
+                    html += `<tr class="${rowClass} border-b border-gray-100"><td class="p-3 text-center">${medal}</td><td class="p-3 truncate max-w-[150px]">${s.name}</td><td class="p-3 text-right text-blue-600 font-mono text-lg">${s.score}</td></tr>`; 
                 });
             }
-            html += '</tbody></table>';
-            container.innerHTML = html;
+            container.innerHTML = html + '</tbody></table>';
         }
 
-        function displayHighScores() {
-            document.getElementById('scoresModal').classList.remove('hidden');
-            renderScores();
-        }
-
+        function displayHighScores() { document.getElementById('scoresModal').classList.remove('hidden'); switchTab('local'); }
         function endGame() {
-            gameRunning = false; cancelAnimationFrame(animationId);
-            hudLayer.classList.add('hidden'); gameOverScreen.classList.remove('hidden'); finalScoreDisplay.textContent = score;
+            gameRunning = false; hudLayer.classList.add('hidden'); gameOverScreen.classList.remove('hidden'); finalScoreDisplay.textContent = score;
             const name = playerNameInput.value.trim() || "Joueur"; if(score > 0) saveScore(name, score);
         }
 
         document.getElementById('startBtn').addEventListener('click', () => { startScreen.classList.add('hidden'); hudLayer.classList.remove('hidden'); initGame(); });
         document.getElementById('restartBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); hudLayer.classList.remove('hidden'); initGame(); });
-        document.getElementById('changeFaceBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); });
+        document.getElementById('changeFaceBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); player.x = canvas.width / 2; });
         document.getElementById('showScoresBtn').addEventListener('click', displayHighScores);
         document.getElementById('closeScoresModal').addEventListener('click', () => { document.getElementById('scoresModal').classList.add('hidden'); });
-
         photoInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        userFaceImage = img;
-                        facePreview.src = ev.target.result;
-                        facePreview.classList.remove('hidden');
-                        placeholderFace.classList.add('hidden');
-                    }
-                    img.src = ev.target.result;
-                }
-                reader.readAsDataURL(file);
-            }
+            const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { userFaceImage = img; facePreview.src = ev.target.result; facePreview.classList.remove('hidden'); placeholderFace.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
         });
 
-        initCustomizationUI(); resize(); updateMusicButtonUI();
+        initCustomizationUI(); resize(); updateMusicButtonUI(); requestAnimationFrame(masterLoop); player.x = canvas.width / 2;
     </script>
 </body>
 </html>
