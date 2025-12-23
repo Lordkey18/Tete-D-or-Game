@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1441108386022611"
+     crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tête d'Or - Arcade Football</title>
@@ -80,7 +82,6 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Start Screen -->
     <div id="startScreen" class="ui-layer interactive">
         <div class="max-w-md w-[95%]">
             <h1 class="text-5xl text-white text-center mb-6 arcade-font drop-shadow-[0_4px_0_rgba(0,0,0,0.3)] stroke-black" style="-webkit-text-stroke: 1px rgba(0,0,0,0.2);">TÊTE D'OR</h1>
@@ -131,7 +132,6 @@
         </div>
     </div>
 
-    <!-- HUD -->
     <div id="hudLayer" class="ui-layer hidden !justify-start !items-start p-4">
         <div class="flex justify-between w-full items-start">
             <div class="text-5xl text-white font-black drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] arcade-font stroke-black" style="-webkit-text-stroke: 2px black;"><span id="scoreDisplay">0</span></div>
@@ -142,7 +142,6 @@
         </div>
     </div>
 
-    <!-- Game Over -->
     <div id="gameOverScreen" class="ui-layer interactive hidden">
         <div class="glass-panel p-8 max-w-sm w-[90%] text-center">
             <h2 class="text-5xl text-red-500 mb-2 arcade-font drop-shadow-sm">FIN DU MATCH</h2>
@@ -156,34 +155,41 @@
         </div>
     </div>
 
-    <!-- Scores Modal (MODIFIÉ POUR LE SCROLL) -->
+    <div id="adInterstitialModal" class="modal hidden interactive z-[200]">
+        <div class="glass-panel p-4 flex flex-col items-center justify-center bg-white">
+            <p class="text-xs text-gray-400 mb-2">PUBLICITÉ</p>
+            
+            <div class="w-[300px] h-[250px] bg-gray-200 flex items-center justify-center mb-4 overflow-hidden border border-gray-300">
+                
+                <span class="text-gray-500 font-bold text-center px-4">Espace Publicitaire<br>(AdSense)</span>
+                
+            </div>
+
+            <button id="closeAdBtn" class="w-full btn-primary text-white py-2 rounded-xl font-bold shadow-lg">FERMER LA PUB ✖</button>
+        </div>
+    </div>
+
     <div id="scoresModal" class="modal hidden interactive">
-        <!-- Utilisation de Flexbox pour une mise en page fixe (Header) + Scroll (Body) -->
         <div class="glass-panel modal-content p-0 max-w-lg w-[90%] text-center relative flex flex-col max-h-[85vh] !overflow-hidden">
-            
             <button onclick="document.getElementById('scoresModal').classList.add('hidden')" class="absolute top-2 right-4 text-3xl font-bold text-white/80 hover:text-white z-50 transition-colors">&times;</button>
-            
-            <!-- Header Fixe -->
             <div class="bg-blue-600 text-white p-4 shrink-0">
                 <h2 class="text-2xl arcade-font">CLASSEMENT</h2>
             </div>
-            
-            <!-- Onglets Fixes -->
             <div class="flex border-b bg-gray-50 shrink-0">
                 <div id="tabLocal" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('local')">LOCAL</div>
                 <div id="tabWorld" class="tab-btn p-3 flex-1 font-bold text-gray-500 cursor-pointer border-b-4 border-transparent hover:bg-gray-100" onclick="switchTab('world')">MONDE 🌍</div>
             </div>
-
-            <!-- Liste Scrollable (Flex Grow + Overflow Auto) -->
-            <div id="scoresTable" class="text-left bg-white overflow-y-auto flex-1 custom-scroll p-0 relative">
-                <!-- Les scores seront injectés ici -->
-            </div>
-            
-            <!-- Footer Fixe -->
+            <div id="scoresTable" class="text-left bg-white overflow-y-auto flex-1 custom-scroll p-0 relative"></div>
             <div class="p-4 border-t shrink-0 bg-white">
                 <button onclick="document.getElementById('scoresModal').classList.add('hidden')" id="closeScoresModal" class="w-full bg-red-100 hover:bg-red-200 text-red-600 text-lg py-2 rounded-xl font-bold transition">Fermer</button>
             </div>
         </div>
+    </div>
+
+    <div id="adBannerBottom" class="fixed bottom-0 left-0 w-full h-[60px] bg-gray-900 border-t-2 border-green-500 z-[100] flex justify-center items-center pointer-events-auto">
+        
+        <span class="text-white text-xs font-mono">ESPACE PUBLICITAIRE (Bandeau)</span>
+        
     </div>
 
     <script>
@@ -269,6 +275,10 @@
 
         let gameRunning = false, score = 0, lastTime = 0, difficultyLevel = 1, userFaceImage = null, playerHitTimer = 0;
         let targetPlayerX = 0;
+        
+        // --- GESTION PUBLICITÉ ---
+        let gamesPlayedCount = 0; 
+        const AD_INTERVAL = 3; // Pub toutes les 3 parties
 
         // Constantes physiques
         const TARGET_FPS = 60;
@@ -311,9 +321,12 @@
         };
 
         function setPlayerY() { player.y = canvas.height - 40; }
+        
+        // MODIFICATION POUR PUB : Ajustement taille canvas
         function resize() { 
             canvas.width = window.innerWidth; 
-            canvas.height = window.innerHeight; 
+            // On soustrait 60px pour laisser la place au bandeau pub en bas
+            canvas.height = window.innerHeight - 60; 
             setPlayerY(); 
             if (!gameRunning) {
                 player.x = canvas.width / 2; 
@@ -365,6 +378,8 @@
 
             if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.vx *= -0.8; } 
             else if (ball.x + ball.radius > canvas.width) { ball.x = canvas.width - ball.radius; ball.vx *= -0.8; }
+            
+            // Fin du jeu quand la balle touche le bas (ajusté avec resize)
             if (ball.y - ball.radius > canvas.height - 40) { endGame(); }
 
             const headCenterY = player.y - 155; 
@@ -514,7 +529,6 @@
         function loadLocalScores() { try { return JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch { return []; } }
         
         async function saveScore(name, score) {
-            // Augmentation de la limite locale à 50
             let scores = loadLocalScores(); scores.push({ name: name || "Anonyme", score: score }); scores.sort((a, b) => b.score - a.score); scores = scores.slice(0, 50); localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
             if (isFirebaseReady) {
                 try {
@@ -545,7 +559,6 @@
                 if (isFirebaseReady) {
                     try {
                         const { collection, getDocs, query, orderBy, limit } = window.firebaseModules;
-                        // Augmentation de la limite Firestore à 50
                         const q = query(collection(db, 'scores'), orderBy("score", "desc"), limit(50));
                         const querySnapshot = await getDocs(q);
                         const scores = querySnapshot.docs.map(doc => doc.data());
@@ -574,9 +587,30 @@
         }
 
         function displayHighScores() { document.getElementById('scoresModal').classList.remove('hidden'); switchTab('local'); }
+        
+        // --- LOGIQUE FIN DE JEU MODIFIÉE POUR PUB ---
         function endGame() {
-            gameRunning = false; hudLayer.classList.add('hidden'); gameOverScreen.classList.remove('hidden'); finalScoreDisplay.textContent = score;
-            const name = playerNameInput.value.trim() || "Joueur"; if(score > 0) saveScore(name, score);
+            gameRunning = false;
+            hudLayer.classList.add('hidden');
+            
+            // Compteur de parties
+            gamesPlayedCount++;
+
+            // Si modulo 3 = 0 (donc 3, 6, 9...), on affiche la pub
+            if (gamesPlayedCount % AD_INTERVAL === 0) {
+                document.getElementById('adInterstitialModal').classList.remove('hidden');
+            } else {
+                showGameOverScreen();
+            }
+
+            // Sauvegarde du score
+            finalScoreDisplay.textContent = score;
+            const name = playerNameInput.value.trim() || "Joueur"; 
+            if(score > 0) saveScore(name, score);
+        }
+
+        function showGameOverScreen() {
+            gameOverScreen.classList.remove('hidden');
         }
 
         document.getElementById('startBtn').addEventListener('click', () => { startScreen.classList.add('hidden'); hudLayer.classList.remove('hidden'); initGame(); });
@@ -584,6 +618,13 @@
         document.getElementById('changeFaceBtn').addEventListener('click', () => { gameOverScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); player.x = canvas.width / 2; targetPlayerX = player.x; });
         document.getElementById('showScoresBtn').addEventListener('click', displayHighScores);
         document.getElementById('closeScoresModal').addEventListener('click', () => { document.getElementById('scoresModal').classList.add('hidden'); });
+        
+        // Close Ad Button
+        document.getElementById('closeAdBtn').addEventListener('click', () => {
+            document.getElementById('adInterstitialModal').classList.add('hidden');
+            showGameOverScreen();
+        });
+
         photoInput.addEventListener('change', (e) => {
             const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = new Image(); img.onload = () => { userFaceImage = img; facePreview.src = ev.target.result; facePreview.classList.remove('hidden'); placeholderFace.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
         });
