@@ -653,26 +653,49 @@
 
         initCustomizationUI(); resize(); updateMusicButtonUI(); requestAnimationFrame(masterLoop); player.x = canvas.width / 2; targetPlayerX = player.x;
     </script>
-     <section class="p-8 max-w-2xl mx-auto text-gray-800 bg-white mt-10 rounded-lg shadow-inner">
-    <h2 class="text-2xl font-bold mb-4">À propos de Tête d'Or - Jeu de Football Arcade</h2>
-    <p class="mb-4">
-        Bienvenue sur <strong>Tête d'Or</strong>, le jeu de football arcade ultime jouable directement dans votre navigateur. 
-        Dans ce jeu de sport passionnant, vous incarnez un joueur de foot dont le but est de maintenir le ballon en l'air le plus longtemps possible en utilisant uniquement la tête.
-    </p>
-    <h3 class="text-xl font-semibold mb-2">Comment jouer ?</h3>
-    <ul class="list-disc ml-5 mb-4">
-        <li>Utilisez votre souris ou votre doigt pour déplacer le joueur latéralement.</li>
-        <li>Faites rebondir le ballon sur la tête du joueur pour marquer des points.</li>
-        <li>Évitez les obstacles qui apparaissent au fur et à mesure que la difficulté augmente (cartons rouges, bouteilles, sifflets).</li>
-        <li>Progressez à travers les niveaux pour devenir le champion du classement mondial.</li>
-    </ul>
-    <p>
-        Tête d'Or est un jeu gratuit optimisé pour les mobiles et les ordinateurs, offrant une expérience de jeu fluide et compétitive avec un système de score en temps réel via Firebase. Personnalisez votre joueur dans le vestiaire et lancez-vous sur le terrain !
-    </p>
-</section>
-     <footer class="text-center pb-20 pt-10 text-gray-400 text-xs">
-    <a href="privacy.html" class="underline hover:text-gray-600">Politique de Confidentialité</a>
-</footer>
+     <article class="max-w-4xl mx-auto p-8 bg-white mt-10 mb-20 rounded-xl shadow-lg text-gray-800 leading-relaxed border border-gray-100">
+        <h1 class="text-3xl font-bold mb-6 text-green-700 arcade-font">Tête d'Or : Le Guide Complet du Jeu de Football Arcade</h1>
+        
+        <p class="mb-6 text-lg">
+            Bienvenue sur la plateforme officielle de <strong>Tête d'Or</strong>, l'expérience ultime de jonglage de football en ligne. Développé pour les passionnés du ballon rond et les amateurs de jeux d'arcade, notre titre combine réflexes pur et gestion de la physique pour un divertissement immédiat et addictif, sans aucun téléchargement requis.
+        </p>
+
+        <h2 class="text-2xl font-semibold mt-8 mb-4 border-b-2 border-green-500 pb-2">Comment jouer et maîtriser le terrain ?</h2>
+        <p class="mb-4">
+            Le gameplay de <strong>Tête d'Or</strong> repose sur une mécanique de précision. En utilisant votre souris sur ordinateur ou votre écran tactile sur mobile, vous devez déplacer votre avatar latéralement pour intercepter le ballon de football. L'objectif principal est de maintenir le ballon en l'air le plus longtemps possible en utilisant uniquement la tête du joueur.
+        </p>
+        <ul class="list-disc ml-8 mb-6 space-y-2">
+            <li><strong>Le Score :</strong> Chaque rebond sur la tête augmente votre score d'un point.</li>
+            <li><strong>La Difficulté :</strong> Tous les 10 points, vous franchissez un niveau de difficulté. La vitesse du ballon augmente et les obstacles deviennent plus fréquents.</li>
+            <li><strong>Les Obstacles :</strong> Le terrain est semé d'embûches. Évitez les cartons rouges, les sifflets et les bouteilles qui peuvent perturber votre trajectoire et mettre fin à votre série de jongles.</li>
+        </ul>
+
+        <h2 class="text-2xl font-semibold mt-8 mb-4 border-b-2 border-green-500 pb-2">Un jeu de football personnalisable et compétitif</h2>
+        <p class="mb-4">
+            Ce qui rend <strong>Tête d'Or</strong> unique est sa dimension sociale et personnalisable. Grâce à notre intégration avec Firebase, vous pouvez :
+        </p>
+        <ul class="list-disc ml-8 mb-6 space-y-2">
+            <li><strong>Le Vestiaire :</strong> Personnalisez l'apparence de votre joueur, changez la couleur de votre maillot ou de votre short.</li>
+            <li><strong>Personnalisation Faciale :</strong> Utilisez la caméra de votre appareil pour intégrer votre propre visage sur le joueur, une fonctionnalité innovante pour une immersion totale.</li>
+            <li><strong>Classement Mondial :</strong> Comparez vos prouesses avec des joueurs du monde entier grâce à notre tableau des scores en temps réel.</li>
+        </ul>
+
+        <h2 class="text-2xl font-semibold mt-8 mb-4 border-b-2 border-green-500 pb-2">Informations Techniques et Respect de la Vie Privée</h2>
+        <p class="mb-4 italic text-sm text-gray-600">
+            Tête d'Or est développé en HTML5 avec les dernières technologies Canvas API. Nous nous engageons à offrir une plateforme sécurisée et transparente. Notre site utilise des services tiers comme Google AdSense pour diffuser des publicités adaptées, ce qui nécessite l'utilisation de cookies techniques.
+        </p>
+        <p class="text-sm text-gray-600">
+            Pour plus de détails sur la gestion de vos données et l'utilisation des technologies publicitaires, nous vous invitons à consulter notre page dédiée ci-dessous.
+        </p>
+    </article>
+
+    <footer class="text-center pb-24 pt-10 text-gray-500 text-sm bg-gray-50 border-t border-gray-200">
+        <p class="font-bold mb-2">&copy; 2024 Tête d'Or Arcade - Tous droits réservés.</p>
+        <div class="flex justify-center gap-6">
+            <a href="privacy.html" class="underline hover:text-green-600 transition">Politique de Confidentialité</a>
+            <a href="#gameCanvas" class="underline hover:text-green-600 transition">Retour au Jeu</a>
+        </div>
+    </footer>
 </body>
 </html>
 
