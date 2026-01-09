@@ -176,7 +176,9 @@
                 
             </div>
 
-            <button id="closeAdBtn" class="w-full btn-primary text-white py-2 rounded-xl font-bold shadow-lg">FERMER LA PUB ✖</button>
+            <button id="closeAdBtn" disabled class="w-full bg-gray-400 text-white py-2 rounded-xl font-bold shadow-lg cursor-not-allowed transition-all">
+    ATTENDRE <span id="adTimer">5</span>s
+</button>
         </div>
     </div>
 
@@ -610,26 +612,50 @@
 
         function displayHighScores() { document.getElementById('scoresModal').classList.remove('hidden'); switchTab('local'); }
         
-        // --- LOGIQUE FIN DE JEU MODIFIÉE POUR PUB ---
-        function endGame() {
-            gameRunning = false;
-            hudLayer.classList.add('hidden');
-            
-            // Compteur de parties
-            gamesPlayedCount++;
+        // --- LOGIQUE FIN DE JEU AVEC TIMER PUB ---
+function endGame() {
+    gameRunning = false;
+    hudLayer.classList.add('hidden');
+    
+    gamesPlayedCount++;
 
-            // Si modulo 3 = 0 (donc 3, 6, 9...), on affiche la pub
-            if (gamesPlayedCount % AD_INTERVAL === 0) {
-                document.getElementById('adInterstitialModal').classList.remove('hidden');
-            } else {
-                showGameOverScreen();
+    if (gamesPlayedCount % AD_INTERVAL === 0) {
+        const adModal = document.getElementById('adInterstitialModal');
+        const closeBtn = document.getElementById('closeAdBtn');
+        const timerSpan = document.getElementById('adTimer');
+        let timeLeft = 5; // Nombre de secondes obligatoires
+
+        // Reset du bouton
+        closeBtn.disabled = true;
+        closeBtn.classList.replace('btn-primary', 'bg-gray-400');
+        closeBtn.classList.add('cursor-not-allowed');
+        timerSpan.textContent = timeLeft;
+        
+        adModal.classList.remove('hidden');
+
+        // Lancement du compte à rebours
+        const countdown = setInterval(() => {
+            timeLeft--;
+            timerSpan.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                closeBtn.disabled = false;
+                closeBtn.innerHTML = "FERMER LA PUB ✖";
+                // On remet le style vert/bleu cliquable
+                closeBtn.classList.replace('bg-gray-400', 'btn-primary');
+                closeBtn.classList.remove('cursor-not-allowed');
             }
+        }, 1000);
 
-            // Sauvegarde du score
-            finalScoreDisplay.textContent = score;
-            const name = playerNameInput.value.trim() || "Joueur"; 
-            if(score > 0) saveScore(name, score);
-        }
+    } else {
+        showGameOverScreen();
+    }
+
+    finalScoreDisplay.textContent = score;
+    const name = playerNameInput.value.trim() || "Joueur"; 
+    if(score > 0) saveScore(name, score);
+}
 
         function showGameOverScreen() {
             gameOverScreen.classList.remove('hidden');
@@ -653,7 +679,7 @@
 
         initCustomizationUI(); resize(); updateMusicButtonUI(); requestAnimationFrame(masterLoop); player.x = canvas.width / 2; targetPlayerX = player.x;
     </script>
-     <article class="max-w-4xl mx-auto p-8 bg-white mt-10 mb-20 rounded-xl shadow-lg text-gray-800 leading-relaxed border border-gray-100">
+<article class="max-w-4xl mx-auto p-8 bg-white mt-10 mb-20 rounded-xl shadow-lg text-gray-800 leading-relaxed border border-gray-100">
         <h1 class="text-3xl font-bold mb-6 text-green-700 arcade-font">Tête d'Or : Le Guide Complet du Jeu de Football Arcade</h1>
         
         <p class="mb-6 text-lg">
@@ -698,6 +724,3 @@
     </footer>
 </body>
 </html>
-
-
-
